@@ -1,0 +1,52 @@
+[
+  {
+    "exhibition_name": "Earendel",
+    "start_date": "2025-03-06T00:00:00.000Z",
+    "end_date": "2025-04-04T00:00:00.000Z",
+    "private_view_start_date": null,
+    "private_view_end_date": null,
+    "featured_artists": ["Hessam Samavatian"],
+    "schedule": [
+      {
+        "start_time": "2025-03-06T00:00:00.000Z",
+        "end_time": "2025-04-04T00:00:00.000Z",
+        "description": "Hessam Samavatian’s solo exhibition ‘Earendel’, refers to the most distant known star, a point of light that reaches us from the edges of the observable universe. Just as this light has traveled billions of years before becoming visible to us, images, memories, and traces of the past exist in a constant state of displacement. They emerge from one time and space, only to be perceived and reinterpreted in another. Photography, as a medium inherently tied to light and time, plays a crucial role in this reflection—capturing moments while simultaneously separating them from their origin. Following this idea, the exhibition presents works that resist the notion of a ‘decisive moment’ and embrace the passage of time and the latent potential within materials. These are sculptures that hold their own shadows, images that reveal their own breaking points, and material processes that inscribe the passing of time, to investigate their own awareness and the effects of processes of change. Traces, impressions, and indexical marks feature prominently, whether through the fragility of plaster forms, the alchemy of photographic development, or the shifting boundaries between material and image. In doing so, each artwork functions as a model for an idea, not as a fixed statement but as a point of reference within a larger system of relations. The exhibition invites the viewer to consider how meaning emerges through context, how time inscribes itself into images and objects, and how perception is shaped by both presence and absence. Drawing from traditions of optical science, photographic experimentation, and conceptual inquiry, Earendel is not only about what is distant but also about what connects us to the faraway—whether through light, memory, or the act of seeing itself."
+      }
+    ],
+    "info": "The title of Hessam Samavatian’s solo exhibition ‘Earendel’, refers to the most distant known star, a point of light that reaches us from the edges of the observable universe. Just as this light has traveled billions of years before becoming visible to us, images, memories, and traces of the past exist in a constant state of displacement. They emerge from one time and space, only to be perceived and reinterpreted in another. Photography, as a medium inherently tied to light and time, plays a crucial role in this reflection—capturing moments while simultaneously separating them from their origin. Following this idea, the exhibition presents works that resist the notion of a ‘decisive moment’ and embrace the passage of time and the latent potential within materials. These are sculptures that hold their own shadows, images that reveal their own breaking points, and material processes that inscribe the passing of time, to investigate their own awareness and the effects of processes of change. Traces, impressions, and indexical marks feature prominently, whether through the fragility of plaster forms, the alchemy of photographic development, or the shifting boundaries between material and image. In doing so, each artwork functions as a model for an idea, not as a fixed statement but as a point of reference within a larger system of relations. The exhibition invites the viewer to consider how meaning emerges through context, how time inscribes itself into images and objects, and how perception is shaped by both presence and absence. Drawing from traditions of optical science, photographic experimentation, and conceptual inquiry, Earendel is not only about what is distant but also about what connects us to the faraway—whether through light, memory, or the act of seeing itself.",
+    "ticket": {
+      "is_ticketed": false,
+      "description": null,
+      "tickets": []
+    },
+    "image_urls": [
+      "https://artlogic-res.cloudinary.com/w_650,c_limit,f_auto,fl_lossy,q_auto/ws-artlogicwebsite0402/usr/exhibitions/images/exhibitions/62/hs_1_2_731a6960.jpg"
+    ],
+    "selector": "Earendel EARENDEL HESSAM SAMAVATIAN 6 MAR - 4 APR 2025"
+  },
+  {
+    "exhibition_name": "Apolis",
+    "start_date": "2025-01-16T00:00:00.000Z",
+    "end_date": "2025-02-15T00:00:00.000Z",
+    "private_view_start_date": null,
+    "private_view_end_date": null,
+    "featured_artists": ["Arash Fayez"],
+    "schedule": [
+      {
+        "start_time": "2025-01-16T00:00:00.000Z",
+        "end_time": "2025-02-15T00:00:00.000Z",
+        "description": "Apolis is the visual autobiography of Arash Fayez’s life in limbo during those years. The work combines official records with photographs taken over the same period. This juxtaposition creates a multi-layered narrative, revealing contrasting perspectives."
+      }
+    ],
+    "info": "Arash Fayez (b. 1984, Tehran, Iran) is an artist working with different forms of image-making, exploring notions of in-betweenness. His inquiries into liminal spaces, geographic or otherwise, take the form of writing, performance, and video.",
+    "ticket": {
+      "is_ticketed": false,
+      "description": "No ticket required to attend this exhibition.",
+      "tickets": []
+    },
+    "image_urls": [
+      "https://artlogic-res.cloudinary.com/w_650,c_limit,f_auto,fl_lossy,q_auto/ws-artlogicwebsite0402/usr/images/exhibitions/group_images_override/58/new-image.jpg"
+    ],
+    "selector": "Apolis Arash Fayez APOLIS ARASH FAYEZ 16 JAN - 15 FEB 2025"
+  }
+]
