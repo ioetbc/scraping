@@ -6,3 +6,10 @@
 [] a tag e.g. exhibition, talks, performance
 [] observations returns events that have already ended make sure ONLY current / upcoming events are retrieved (standpoint/events)
 [x] log out big jeso array at the end of scraping
+[] noah davis 'Relaxed View of Noah Davis' is using the same info as the other noah davis ones
+[] the select seems to be different from the exhibition name and the content is wrong
+
+[] hypha studios links go to eventbrite and default to the website url
+[] bombfactory context too large???
+[] joshlilley returns paranoid but not heavy is the mountain. I think because they do not have dates [remove year constraint]
+[]
