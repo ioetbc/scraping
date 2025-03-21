@@ -24,5 +24,25 @@
 // https://www.saatchigallery.com/whats-on/upcoming
 // https://www.sohorevue.com/
 // https://www.pusher.ink/exhibitions
+// https://public.gallery/exhibitions
+// https://www.rabbet.co.uk/upcomingexhibitions
+// https://www.198.org.uk/whats-on
+// https://www.3812gallery.com/exhibitions/london/
+// https://a-i-gallery.com/exhibitions/
+// http://ascstudios.co.uk/events-exhibitions/gallery/
+// https://www.albionjeune.com/exhibitions/
+// https://www.aliceamati.com/upcoming-exhibitions
+// https://www.aliceblackgallery.com/exhibitions-main-page
+// https://alisonjacques.com/exhibitions
+// https://almapearl.com/exhibitions/
+// https://www.alminerech.com/exhibitions/?l=london
+// https://www.alonzakaim.com/exhibitions/
+// https://amandawilkinsongallery.com/exhibitions/
+// https://www.annelyjudafineart.co.uk/exhibitions/forthcoming/
+// https://www.annkakultys.com/exhibitions/
+// https://arcadiamissa.com/category/exhibition/
+// https://austindesmond.com/exhibitions
+// https://autoitaliasoutheast.org/projects/
+// https://www.tate.org.uk/whats-on
 
-export const GALLERY_URL = "https://www.pusher.ink/exhibitions";
+export const GALLERY_URL = "https://www.alonzakaim.com/exhibitions/";

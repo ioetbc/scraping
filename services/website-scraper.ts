@@ -90,12 +90,13 @@ export class WebsiteScraper {
     }
   }
 
-  getHTML() {
+  async getHTML() {
     if (!this.page) {
       console.log("no page found");
       return;
     }
-    return this.page.evaluate(() => document.body.textContent);
+    const html = await this.page.evaluate(() => document.body.innerText);
+    return html;
   }
 
   async getHrefs() {
@@ -109,22 +110,6 @@ export class WebsiteScraper {
     );
 
     return hrefs;
-
-    // const result = await generateObject({
-    //   model: openai("gpt-4o"),
-    //   system: "Filter this list to only include urls to specific exhibitions",
-    //   prompt: hrefs.join("\n"),
-    //   schema: z.object({
-    //     urls: z.array(z.string().url()),
-    //   }),
-    // });
-
-    // if (!result) {
-    //   console.log("llm unable to filter urls", GALLERY_URL);
-    //   return [];
-    // }
-
-    // return result.object.urls;
   }
 
   formatHTML(html: string) {
@@ -132,10 +117,8 @@ export class WebsiteScraper {
   }
 
   async findEvents(text: string, hrefs: string[]) {
-    console.log("finding events", text, hrefs);
-
     const result = await generateObject({
-      model: openai("gpt-4-1106-preview"),
+      model: openai("gpt-4o"),
       system:
         "Find all the upcoming events on the page. The current year is 2025. DO NOT include events from previous years. e.g. 2024.",
       prompt: `${text}\n\nHere is a list of urls ${JSON.stringify(hrefs)}`,
@@ -205,6 +188,8 @@ export class WebsiteScraper {
 
     const html = await this.getHTML();
 
+    console.log("html", html);
+
     if (!html) {
       console.log("no text found on page", GALLERY_URL);
       return;
@@ -212,17 +197,13 @@ export class WebsiteScraper {
 
     const text = this.formatHTML(html);
 
-    console.log("text yes", text);
     const hrefs = await this.getHrefs();
-    console.log("hrefs yes", hrefs);
     const events = await this.findEvents(text, hrefs);
 
     if (!events) {
       console.log("no events found");
       return;
     }
-
-    console.log("events", events);
 
     for (const event of events) {
       await this.visitWebsite(event.url);

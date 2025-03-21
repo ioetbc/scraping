@@ -2,7 +2,6 @@ import type {ConstructorParams, LogLine} from "@browserbasehq/stagehand";
 import dotenv from "dotenv";
 import {AISdkClient} from "./aisdk_client.js";
 import {openai} from "@ai-sdk/openai";
-false;
 
 dotenv.config();
 
