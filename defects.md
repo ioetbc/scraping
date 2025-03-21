@@ -2,22 +2,13 @@
 
 [] a tag e.g. exhibition, talks, performance
 
-## EXHIBITIONS NOT FOUND
+## NOT RETURNING ALL EVENTS
 
 [] joshlilley returns paranoid but not heavy is the mountain. I think because they do not have dates
+[] https://www.198.org.uk/whats-on
 
 ## CONTEXT TOO LARGE
 
-[] bombfactory
-[] https://www.rabbet.co.uk/upcomingexhibitions
-[] https://www.198.org.uk/whats-on
-[] https://www.3812gallery.com/exhibitions/london/
-[] http://ascstudios.co.uk/events-exhibitions/gallery/
-[] https://www.aliceamati.com/upcoming-exhibitions
-[] https://www.alminerech.com/exhibitions/?l=london
-[] https://www.alonzakaim.com/exhibitions/
-[] https://www.annkakultys.com/exhibitions/
-[] https://www.ohshprojects.com
 [] https://autograph.org.uk/exhibitions-in-development/
 
 ## NO TEXT JUST IMAGES

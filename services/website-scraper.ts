@@ -1,86 +1,21 @@
-import {launch, Page} from "puppeteer";
+import {Browser, launch, Page} from "puppeteer";
 import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
-import {z} from "zod";
-
-const schema = z.object({
-  exhibition_name: z.string().describe("the name of the event").nullable(),
-  start_date: z.string().describe("the start date of the event").nullable(),
-  end_date: z.string().describe("the end date of the event").nullable(),
-  private_view_start_date: z
-    .string()
-    .describe("the private view start date of the event")
-    .nullable(),
-  private_view_end_date: z
-    .string()
-    .describe("the private view end date of the event")
-    .nullable(),
-  featured_artists: z
-    .array(z.string())
-    .describe("the names of all the artists in the event")
-    .nullable(),
-  schedule: z.array(
-    z
-      .object({
-        start_time: z
-          .string()
-          .describe("The scheduled start time of the event")
-          .nullable(),
-        end_time: z
-          .string()
-          .describe("The scheduled end time of the event")
-          .nullable(),
-        label: z.string().describe("The label of the schedule").nullable(),
-      })
-      .describe("Event timings excluding the private view")
-      .nullable()
-  ),
-  info: z.string().describe("The information surrounding the event").nullable(),
-  ticket: z
-    .object({
-      is_ticketed: z
-        .boolean()
-        .describe("Whether you need a ticket to attend this event")
-        .nullable(),
-      description: z
-        .string()
-        .describe("The description of the ticket")
-        .nullable(),
-      tickets: z.array(
-        z
-          .object({
-            price: z.number().describe("The price of the ticket").nullable(),
-            ticket_url: z
-              .string()
-              .describe("A url to purchase the ticket")
-              .nullable(),
-          })
-          .nullable()
-      ),
-    })
-    .nullable(),
-  image_urls: z
-    .array(z.string())
-    .describe("The url of the image of the event")
-    .nullable(),
-});
-
+import {event_details_schema} from "../zod/event-details-schema.js";
+import {event_map_schema} from "../zod/event-map-schema.js";
 export class WebsiteScraper {
   page: Page | null;
+  browser: Browser | null;
 
   constructor() {
     this.page = null;
+    this.browser = null;
   }
 
   async visitWebsite(url: string) {
-    if (!this.page) {
-      console.log("no page found");
-      return;
-    }
-
     try {
-      await this.page.goto(url, {
+      await this.page?.goto(url, {
         waitUntil: "networkidle2",
         timeout: 60000,
       });
@@ -91,25 +26,16 @@ export class WebsiteScraper {
   }
 
   async getHTML() {
-    if (!this.page) {
-      console.log("no page found");
-      return;
-    }
-    const html = await this.page.evaluate(() => document.body.innerText);
+    const html = await this.page?.evaluate(() => document.body.innerText);
     return html;
   }
 
   async getHrefs() {
-    if (!this.page) {
-      console.log("no page found");
-      return [];
-    }
-
-    const hrefs = await this.page.evaluate(() =>
+    const hrefs = await this.page?.evaluate(() =>
       Array.from(document.querySelectorAll("a")).map((a) => a.href)
     );
 
-    return hrefs;
+    return hrefs ?? [];
   }
 
   formatHTML(html: string) {
@@ -122,14 +48,7 @@ export class WebsiteScraper {
       system:
         "Find all the upcoming events on the page. The current year is 2025. DO NOT include events from previous years. e.g. 2024.",
       prompt: `${text}\n\nHere is a list of urls ${JSON.stringify(hrefs)}`,
-      schema: z.object({
-        events: z.array(
-          z.object({
-            name: z.string().describe("the name of the event"),
-            url: z.string().url().describe("the url of the event"),
-          })
-        ),
-      }),
+      schema: event_map_schema,
     });
 
     if (!result) {
@@ -154,7 +73,7 @@ export class WebsiteScraper {
           "Ensure you capture the event image URL. Look for images within the event section, especially ones inside <img> tags. " +
           "Ensure the extracted image URL ends in .jpg, .jpeg, .png, .webp, etc.",
         prompt: text,
-        schema,
+        schema: event_details_schema,
       });
 
       return data.object;
@@ -163,26 +82,30 @@ export class WebsiteScraper {
     }
   };
 
-  getImages = async () => {
-    if (!this.page) {
-      console.log("no page found");
-      return [];
-    }
-    const imageElements = await this.page.evaluate(() =>
-      Array.from(document.querySelectorAll("img")).map((element) => element.src)
-    );
-    return imageElements.filter((image) => !image.endsWith(".svg"));
-  };
-
-  async handler() {
-    const browser = await launch({
+  launchBrowser = async () => {
+    this.browser = await launch({
       headless: true,
       args: ["--no-sandbox", "--disable-gpu"],
     });
+  };
 
+  getImages = async () => {
+    const imageElements = await this.page?.evaluate(() =>
+      Array.from(document.querySelectorAll("img")).map((element) => element.src)
+    );
+    return imageElements?.filter((image) => !image.endsWith(".svg")) ?? [];
+  };
+
+  async handler() {
+    await this.launchBrowser();
     console.time("scraping");
 
-    this.page = await browser.newPage();
+    if (!this.browser) {
+      console.log("no browser found");
+      return;
+    }
+
+    this.page = await this.browser.newPage();
 
     await this.visitWebsite(GALLERY_URL);
 
@@ -199,6 +122,8 @@ export class WebsiteScraper {
 
     const hrefs = await this.getHrefs();
     const events = await this.findEvents(text, hrefs);
+
+    console.log("events", events);
 
     if (!events) {
       console.log("no events found");
@@ -233,7 +158,7 @@ export class WebsiteScraper {
 
     await this.page.close();
 
-    browser.close();
+    this.browser.close();
     console.timeEnd("scraping");
 
     return events;
