@@ -46,4 +46,4 @@
 // https://www.tate.org.uk/whats-on
 
 export const GALLERY_URL =
-  "https://autograph.org.uk/exhibitions-in-development/";
+  "http://ascstudios.co.uk/events-exhibitions/gallery/";

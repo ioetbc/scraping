@@ -4,6 +4,7 @@ import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
 import {event_details_schema} from "../zod/event-details-schema.js";
 import {event_map_schema} from "../zod/event-map-schema.js";
+import {DatabaseService} from "./database.js";
 export class WebsiteScraper {
   page: Page | null;
   browser: Browser | null;
@@ -150,10 +151,22 @@ export class WebsiteScraper {
 
       details.image_urls = images;
 
-      console.log(
-        `event details for ${event.name}`,
-        JSON.stringify(details, null, 4)
-      );
+      const db = new DatabaseService();
+
+      await db.insert_exhibition({
+        exhibition_name: event.name,
+        info: details.info,
+        featured_artists: JSON.stringify(details.featured_artists ?? []),
+        exhibition_page_url: event.url,
+        image_urls: JSON.stringify(details.image_urls ?? []),
+        schedule: JSON.stringify(details.schedule ?? []),
+        is_ticketed: details.ticket?.is_ticketed ?? false,
+        ticket_description: details.ticket?.description ?? "",
+        start_date: details.start_date,
+        end_date: details.end_date,
+        private_view_start_date: details.private_view_start_date,
+        private_view_end_date: details.private_view_end_date,
+      });
     }
 
     await this.page.close();
