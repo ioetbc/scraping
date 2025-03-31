@@ -1,6 +1,5 @@
 // https://ab-anbar.com/exhibitions/
 // https://www.standpointlondon.co.uk/
-// https://www.standpointlondon.co.uk/events/
 // https://www.studiochapple.com/blank
 // https://www.bombfactory.org.uk/news // i think the context is too large
 // https://www.thehorsehospital.com/whats-on
@@ -45,5 +44,4 @@
 // https://autoitaliasoutheast.org/projects/
 // https://www.tate.org.uk/whats-on
 
-export const GALLERY_URL =
-  "http://ascstudios.co.uk/events-exhibitions/gallery/";
+export const GALLERY_URL = "https://www.standpointlondon.co.uk/";

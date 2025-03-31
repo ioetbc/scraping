@@ -22,3 +22,18 @@
 ## URL DOES NOT CONTAIN EXHIBITION NAMES (thus unable to accurately find details)
 
 [] https://www.pusher.ink/exhibitions
+
+## Images
+
+[] Some images are base64 (only allow extensions ending in .jpg, .png, .webp etc)
+[] Use LLM to find most accurate images??
+
+## 403
+
+scraping url https://www.davidzwirner.com/events
+html 403 ERROR
+The request could not be satisfied.
+
+## Private view
+
+[] https://www.bosseandbaum.com/exhibitions/12397/ (Does not include time of the PV)

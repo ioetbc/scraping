@@ -1,31 +1,40 @@
 import {Hono} from "hono";
 import {serve} from "@hono/node-server";
-import {launch, Page} from "puppeteer";
-import {WebsiteScraper} from "./services/website-scraper.js";
-
-import "dotenv/config";
-import {GALLERY_URL} from "./const.js";
-
+import {EventScraper} from "./services/event-scraper.js";
+import {ReviewScraper} from "./services/reviews-scraper.js";
+import {PrivateViewScraper} from "./services/private-view-scraper.js";
+import {DatabaseService} from "./services/database.js";
 const app = new Hono().basePath("/api");
 
-const visitGallery = async (page: Page) => {
-  await page.goto(GALLERY_URL, {
-    waitUntil: "networkidle0",
-    timeout: 60000,
-  });
-};
+app.get("/event-scraper", async () => {
+  const db = new DatabaseService();
+  const galleries = await db.get_galleries();
+  const scraper = new EventScraper();
 
-const collectEvents = async () => {
-  const browser = await launch({
-    headless: false,
-    args: ["--no-sandbox", "--disable-gpu"],
-  });
+  console.log("scraping galleries", galleries.length);
 
-  const page = await browser.newPage();
-};
+  const from = galleries.slice(151);
+  // const problematic = galleries.filter((gallery) => gallery.id === 118);
 
-app.get("/scrape", async () => {
-  const scraper = new WebsiteScraper();
+  const done = [];
+
+  for (const gallery of from) {
+    if (gallery.name === "Cardi Gallery") continue;
+
+    await scraper.handler(gallery.exhibition_page_url, gallery.id);
+
+    done.push(gallery.id);
+    console.log(`done ${done.length} / ${from.length}`);
+  }
+});
+
+app.get("/reviews-scraper", async () => {
+  const scraper = new ReviewScraper();
+  await scraper.handler();
+});
+
+app.get("/private-view-scraper", async () => {
+  const scraper = new PrivateViewScraper();
   await scraper.handler();
 });
 
