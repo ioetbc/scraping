@@ -11,12 +11,12 @@ import {z} from "zod";
 import {encoding_for_model} from "tiktoken";
 
 export class EventScraper {
-  page: Page | null;
-  browser: Browser | null;
+  pages: Map<string, Page>;
+  browser: Browser | undefined;
 
   constructor() {
-    this.page = null;
-    this.browser = null;
+    this.pages = new Map();
+    this.browser = undefined;
   }
 
   launchBrowser = async () => {
@@ -27,8 +27,16 @@ export class EventScraper {
   };
 
   async visitWebsite(url: string) {
+    if (!this.browser) {
+      console.log("no browser found");
+      return undefined;
+    }
+
+    const newPage = await this.browser.newPage();
+    this.pages.set(url, newPage);
+
     try {
-      await this.page?.goto(url, {
+      await newPage.goto(url, {
         waitUntil: "networkidle2",
         timeout: 60000,
       });
@@ -38,13 +46,25 @@ export class EventScraper {
     }
   }
 
-  async getPageText() {
-    const html = await this.page?.evaluate(() => document.body.innerText);
+  async getInnerText(key: string) {
+    const page = this.pages.get(key);
+    if (!page) {
+      console.log("no page found for key", key);
+      return undefined;
+    }
+
+    const html = await page.evaluate(() => document.body.innerText);
     return html?.trim();
   }
 
-  async getHrefs() {
-    const hrefs = await this.page?.evaluate(() =>
+  async getHrefs(key: string) {
+    const page = this.pages.get(key);
+    if (!page) {
+      console.log("no page found for key", key);
+      return [];
+    }
+
+    const hrefs = await page.evaluate(() =>
       Array.from(document.querySelectorAll("a")).map((a) => a.href)
     );
 
@@ -109,14 +129,19 @@ export class EventScraper {
     }
   };
 
-  getImages = async () => {
-    const imageElements = await this.page?.evaluate(() =>
+  getImages = async (key: string) => {
+    const page = this.getPage(key);
+
+    const imageElements = await page?.evaluate(() =>
       Array.from(document.querySelectorAll("img")).map((element) => element.src)
     );
+
     const jpgs =
       imageElements?.filter((image) => !image.endsWith(".svg")) ?? [];
 
-    return jpgs.slice(0, 5);
+    const firstFive = jpgs.slice(0, 5);
+
+    return firstFive;
   };
 
   convertDate = (date: string | null) => {
@@ -197,6 +222,14 @@ export class EventScraper {
     });
   };
 
+  getPage = (key: string) => {
+    return this.pages.get(key);
+  };
+
+  // extractEvent = async (url: string, gallery_id: string) => {
+  //   await this.launchBrowser();
+  // }
+
   async handler(url: string, gallery_id: string) {
     await this.launchBrowser();
     console.time("scraping time");
@@ -207,18 +240,18 @@ export class EventScraper {
       return;
     }
 
-    this.page = await this.browser.newPage();
+    const page_key = url;
 
     await this.visitWebsite(url);
 
-    const page_text = await this.getPageText();
+    const page_text = await this.getInnerText(page_key);
 
     if (!page_text) {
       console.log("no text found on page", url);
       return;
     }
 
-    const hrefs = await this.getHrefs();
+    const hrefs = await this.getHrefs(page_key);
     const events = await this.findEvents(page_text, hrefs);
 
     if (!events) {
@@ -231,48 +264,66 @@ export class EventScraper {
 
     console.log("seen exhibitions", seen_exhibitions.length);
 
-    for (const event of events) {
-      if (event.name === "Private view") return;
-      if (seen_exhibitions.includes(event.name)) {
-        console.log("exhibition already exists, exiting:", event.name);
-        continue;
-      }
+    await Promise.all(
+      events.map(async (event) => {
+        if (event.name === "Private view") return;
+        if (seen_exhibitions.includes(event.name)) {
+          console.log("exhibition already exists, exiting:", event.name);
+          return;
+        }
 
-      await this.visitWebsite(event.url);
+        const page_key = event.url;
 
-      const page_text = await this.getPageText();
+        await this.visitWebsite(event.url);
 
-      if (!page_text) {
-        console.log("no text found on page", event.url);
-        continue;
-      }
+        const page_text = await this.getInnerText(page_key);
 
-      const details = await this.extractDetails(page_text);
+        if (!page_text) {
+          console.log("no text found on page", event.url);
+          const page = this.getPage(page_key);
+          page?.close();
+          return;
+        }
 
-      if (!details) {
-        console.log("no details found", event.url);
-        continue;
-      }
+        const details = await this.extractDetails(page_text);
 
-      details.exhibition_name = event.name;
+        if (!details) {
+          console.log("no details found", event.url);
+          const page = this.getPage(page_key);
+          page?.close();
+          return;
+        }
 
-      const checked = await this.checkWork(details, page_text);
+        details.exhibition_name = event.name;
 
-      console.log(`submitted record`, details);
+        const checked = await this.checkWork(details, page_text);
 
-      if (!checked) continue;
+        console.log(`submitted record`, details);
 
-      // const images = await this.getImages();
-      // checked.image_urls = images;
+        if (!checked) {
+          const page = this.getPage(page_key);
+          page?.close();
+          return;
+        }
 
-      console.log(`checked work`, checked);
+        // const images = await this.getImages();
+        // checked.image_urls = images;
 
-      await this.insertDbRecord(checked, event.url, gallery_id);
+        console.log(`checked work`, checked);
+
+        await this.insertDbRecord(checked, event.url, gallery_id);
+        const page = this.getPage(page_key);
+        page?.close();
+      })
+    );
+
+    const mainPage = this.pages.get(page_key);
+
+    if (mainPage) {
+      await mainPage.close();
     }
 
-    await this.page.close();
-
-    this.browser.close();
+    this.browser?.close();
     console.timeEnd("scraping time");
 
     return events;
