@@ -2,13 +2,15 @@ import {Browser, launch, Page} from "puppeteer";
 import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
-import {google} from "@ai-sdk/google";
 import {event_details_schema} from "../zod/event-details-schema.js";
 import {event_map_schema} from "../zod/event-map-schema.js";
 import {DatabaseService} from "./database.js";
 import {z} from "zod";
 
 import {encoding_for_model} from "tiktoken";
+import {isAfter} from "date-fns";
+
+type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
 export class EventScraper {
   pages: Map<string, Page>;
@@ -42,6 +44,7 @@ export class EventScraper {
       });
     } catch (error) {
       console.log("error visiting", url);
+      await this.closePage(url, "error during navigation");
       return;
     }
   }
@@ -49,11 +52,14 @@ export class EventScraper {
   async getInnerText(key: string) {
     const page = this.pages.get(key);
     if (!page) {
-      console.log("no page found for key", key);
+      await this.closePage(
+        key,
+        `no page found whilst getting inner text ${key}`
+      );
       return undefined;
     }
 
-    const html = await page.evaluate(() => document.body.innerText);
+    const html = await page?.evaluate(() => document.body.innerText);
     return html?.trim();
   }
 
@@ -93,26 +99,41 @@ export class EventScraper {
     return truncatedPrompt;
   };
 
-  async findEvents(html: string, hrefs: string[]) {
-    // const truncateHtml = this.truncatePrompt(html);
+  async findEvents(
+    text: string | undefined,
+    hrefs: string[]
+  ): Promise<Event[]> {
+    if (!text) {
+      console.log("no text passed to findEvents");
+      return [];
+    }
+
+    const truncateHtml = this.truncatePrompt(text);
 
     const result = await generateObject({
       model: openai("gpt-4o-mini"),
       system:
         "Find all the upcoming events on the page. The current year is 2025. DO NOT include events from previous years. e.g. 2024. The event must be Located in London, UK. DO NOT include events outside of London, UK. e.g. Seoul, Paris, New York etc.",
-      prompt: `${html}\n\nHere is a list of urls ${JSON.stringify(hrefs)}`,
+      prompt: `${truncateHtml}\n\nHere is a list of urls ${JSON.stringify(
+        hrefs
+      )}`,
       schema: event_map_schema,
     });
 
     if (!result) {
       console.log("llm unable to parse", GALLERY_URL);
-      return undefined;
+      return [];
     }
 
     return result.object.events;
   }
 
-  extractDetails = async (text: string) => {
+  extractDetails = async (text: string | undefined) => {
+    if (!text) {
+      console.log("no text passed to extractDetails");
+      return undefined;
+    }
+
     try {
       const data = await generateObject({
         model: openai("gpt-4o-mini"),
@@ -153,9 +174,12 @@ export class EventScraper {
 
   checkWork = async (
     record: z.infer<typeof event_details_schema>,
-    text: string
+    text: string | undefined
   ) => {
-    // use gemini to covert the html to just the text since that has the largest context window
+    if (!text) {
+      console.log("no text passed to checkWork");
+      return undefined;
+    }
 
     try {
       const data = await generateObject({
@@ -222,13 +246,89 @@ export class EventScraper {
     });
   };
 
+  insert_seen_exhibition = async (
+    exhibition_name: string,
+    gallery_id: string
+  ) => {
+    const db = new DatabaseService();
+    await db.insert_seen_exhibition(exhibition_name, gallery_id);
+  };
+
   getPage = (key: string) => {
     return this.pages.get(key);
   };
 
-  // extractEvent = async (url: string, gallery_id: string) => {
-  //   await this.launchBrowser();
-  // }
+  blockEvent = async (
+    event: Event,
+    seen_exhibitions: string[]
+  ): Promise<{should_skip: boolean; reason?: string}> => {
+    if (!event.name) {
+      return {
+        should_skip: true,
+        reason: "No event name found",
+      };
+    }
+
+    if (this.hasEventEnded(event.end_date)) {
+      return {
+        should_skip: true,
+        reason: "Event already ended",
+      };
+    }
+
+    if (event.name === "Private view") {
+      return {
+        should_skip: true,
+        reason: "Private view",
+      };
+    }
+
+    if (seen_exhibitions.includes(event.name)) {
+      return {
+        should_skip: true,
+        reason: "Already seen",
+      };
+    }
+
+    return {
+      should_skip: false,
+      reason: undefined,
+    };
+  };
+
+  closePage = async (key: string, reason?: string) => {
+    const page = this.getPage(key);
+    if (page) {
+      try {
+        await page.close();
+      } catch (error) {
+        console.log("error closing page:", error);
+      }
+      this.pages.delete(key);
+    } else {
+      console.log("no page found, unable to close page. for key:", key);
+      return;
+    }
+
+    if (reason) {
+      console.log("closed page reason:", reason);
+    }
+  };
+
+  hasEventEnded = (endDate: string | null): boolean => {
+    if (!endDate) {
+      return false;
+    }
+
+    const now = new Date();
+    const eventEndDate = this.convertDate(endDate);
+
+    if (!eventEndDate) {
+      return false;
+    }
+
+    return !isAfter(eventEndDate, now);
+  };
 
   async handler(url: string, gallery_id: string) {
     await this.launchBrowser();
@@ -245,30 +345,25 @@ export class EventScraper {
     await this.visitWebsite(url);
 
     const page_text = await this.getInnerText(page_key);
-
-    if (!page_text) {
-      console.log("no text found on page", url);
-      return;
-    }
-
     const hrefs = await this.getHrefs(page_key);
     const events = await this.findEvents(page_text, hrefs);
-
-    if (!events) {
-      console.log("no events found");
-      return;
-    }
 
     const db = new DatabaseService();
     const seen_exhibitions = await db.get_seen_exhibitions();
 
     console.log("seen exhibitions", seen_exhibitions.length);
 
+    console.log("events", events);
+
     await Promise.all(
       events.map(async (event) => {
-        if (event.name === "Private view") return;
-        if (seen_exhibitions.includes(event.name)) {
-          console.log("exhibition already exists, exiting:", event.name);
+        const {should_skip, reason} = await this.blockEvent(
+          event,
+          seen_exhibitions
+        );
+
+        if (should_skip) {
+          console.log("skipping event:", event.name, "reason:", reason);
           return;
         }
 
@@ -277,51 +372,43 @@ export class EventScraper {
         await this.visitWebsite(event.url);
 
         const page_text = await this.getInnerText(page_key);
-
-        if (!page_text) {
-          console.log("no text found on page", event.url);
-          const page = this.getPage(page_key);
-          page?.close();
-          return;
-        }
-
         const details = await this.extractDetails(page_text);
 
         if (!details) {
-          console.log("no details found", event.url);
-          const page = this.getPage(page_key);
-          page?.close();
+          await this.closePage(page_key, `no details found ${event.url}`);
           return;
         }
 
         details.exhibition_name = event.name;
 
         const checked = await this.checkWork(details, page_text);
-
-        console.log(`submitted record`, details);
+        const images = await this.getImages(page_key);
 
         if (!checked) {
-          const page = this.getPage(page_key);
-          page?.close();
+          await this.closePage(page_key, `no checked work ${event.url}`);
           return;
         }
 
-        // const images = await this.getImages();
-        // checked.image_urls = images;
+        if (this.hasEventEnded(checked.end_date)) {
+          await this.closePage(
+            page_key,
+            `event already ended. name: ${event.name} / url: ${event.url}`
+          );
+          return;
+        }
+
+        checked.image_urls = images;
 
         console.log(`checked work`, checked);
 
         await this.insertDbRecord(checked, event.url, gallery_id);
-        const page = this.getPage(page_key);
-        page?.close();
+        await this.insert_seen_exhibition(event.name, gallery_id);
+
+        await this.closePage(page_key, `inserted record, done`);
       })
     );
 
-    const mainPage = this.pages.get(page_key);
-
-    if (mainPage) {
-      await mainPage.close();
-    }
+    await this.closePage(page_key, `scraping done`);
 
     this.browser?.close();
     console.timeEnd("scraping time");

@@ -4,6 +4,7 @@ import {EventScraper} from "./services/event-scraper.js";
 import {ReviewScraper} from "./services/reviews-scraper.js";
 import {PrivateViewScraper} from "./services/private-view-scraper.js";
 import {DatabaseService} from "./services/database.js";
+
 const app = new Hono().basePath("/api");
 
 app.get("/event-scraper", async () => {
@@ -13,7 +14,7 @@ app.get("/event-scraper", async () => {
 
   console.log("scraping galleries", galleries.length);
 
-  const from = galleries.slice(151);
+  const from = galleries.slice(125);
   // const problematic = galleries.filter((gallery) => gallery.id === 118);
 
   const done = [];
