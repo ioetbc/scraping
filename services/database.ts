@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// TODO use z.infer<typeof event_details_schema> then overwrite certain properties
 type Exhibition = {
   exhibition_name: string | null;
   info: string | null;
@@ -13,9 +14,8 @@ type Exhibition = {
   featured_artists: string;
   exhibition_page_url: string;
   image_urls: string;
-  schedule: string;
+  // schedule: string;
   is_ticketed: boolean;
-  ticket_description: string;
   gallery_id: string;
 };
 
@@ -47,7 +47,7 @@ export class DatabaseService {
         exhibition.private_view_end_date is NULL AND
         start_date > NOW() AND
         start_date <= NOW() + INTERVAL '5 day';
-      `
+      `,
     );
 
     return result.rows.map((row) => row.exhibition_details_url);
@@ -69,14 +69,14 @@ export class DatabaseService {
         exhibition.private_view_end_date,
         exhibition.start_date,
         exhibition.end_date,
-      ]
+      ],
     );
   }
 
   async insert_seen_exhibition(exhibition_name: string, gallery_id: string) {
     await this.client.query(
       `INSERT INTO seen_exhibition (name, gallery_id) VALUES ($1, $2) ON CONFLICT (name, gallery_id) DO NOTHING`,
-      [exhibition_name, gallery_id]
+      [exhibition_name, gallery_id],
     );
   }
 }

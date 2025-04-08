@@ -1,14 +1,26 @@
-import {Browser, launch, Page} from "puppeteer";
-import {GALLERY_URL} from "../const.js";
-import {generateObject} from "ai";
-import {openai} from "@ai-sdk/openai";
-import {event_details_schema} from "../zod/event-details-schema.js";
-import {event_map_schema} from "../zod/event-map-schema.js";
-import {DatabaseService} from "./database.js";
-import {z} from "zod";
+import { Browser, launch, Page } from "puppeteer";
+import { GALLERY_URL } from "../const.js";
+import { generateObject } from "ai";
+import { openai } from "@ai-sdk/openai";
 
-import {encoding_for_model} from "tiktoken";
-import {isAfter} from "date-fns";
+// TODO export object from main schema file to avoid multiple imports from different places same for the prompts
+import {
+  event_details_schema,
+  feedback_schema,
+} from "../zod/event-details-schema.js";
+import { event_map_schema } from "../zod/event-map-schema.js";
+import { event_image_schema } from "../zod/event-image-schema.js";
+
+import { provide_feedback_prompt } from "../prompts/provide-feedback-prompt.js";
+import { find_events_prompt } from "../prompts/find-events-prompt.js";
+import { extract_event_details_prompt } from "../prompts/extract-event-details-prompt.js";
+
+import { DatabaseService } from "./database.js";
+import { z } from "zod";
+
+import { encoding_for_model } from "tiktoken";
+import { isAfter } from "date-fns";
+import { userInfo } from "os";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
@@ -54,7 +66,7 @@ export class EventScraper {
     if (!page) {
       await this.closePage(
         key,
-        `no page found whilst getting inner text ${key}`
+        `no page found whilst getting inner text ${key}`,
       );
       return undefined;
     }
@@ -71,29 +83,23 @@ export class EventScraper {
     }
 
     const hrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a")).map((a) => a.href)
+      Array.from(document.querySelectorAll("a")).map((a) => a.href),
     );
 
     return hrefs ?? [];
   }
 
   truncatePrompt = (text: string) => {
-    const encoding = encoding_for_model("gpt-4");
-    // const maxTokens = get_encoding("gpt-4").length;
+    const encoding = encoding_for_model("gpt-4"); // TODO pass the model in
     const tokens = encoding.encode(text);
-    const MAX_PROMPT_TOKENS = 3000;
+    const MAX_PROMPT_TOKENS = 3000; // TODO This needs to be the max tokens from the model
 
-    let truncatedPrompt: string | Uint8Array = text;
-
-    // console.log("tokens", tokens.length);
-    // console.log("max tokens", MAX_PROMPT_TOKENS);
+    let truncatedPrompt: string | Uint8Array = text; // TODO this needs to be string not Uint8Array
 
     if (tokens.length > MAX_PROMPT_TOKENS) {
       const truncatedTokens = tokens.slice(0, MAX_PROMPT_TOKENS);
       truncatedPrompt = encoding.decode(truncatedTokens);
     }
-
-    // console.log("truncated prompt", truncatedPrompt);
 
     encoding.free();
     return truncatedPrompt;
@@ -101,46 +107,48 @@ export class EventScraper {
 
   async findEvents(
     text: string | undefined,
-    hrefs: string[]
+    hrefs: string[],
   ): Promise<Event[]> {
     if (!text) {
       console.log("no text passed to findEvents");
       return [];
     }
 
-    const truncateHtml = this.truncatePrompt(text);
-
-    const result = await generateObject({
-      model: openai("gpt-4o-mini"),
-      system:
-        "Find all the upcoming events on the page. The current year is 2025. DO NOT include events from previous years. e.g. 2024. The event must be Located in London, UK. DO NOT include events outside of London, UK. e.g. Seoul, Paris, New York etc.",
-      prompt: `${truncateHtml}\n\nHere is a list of urls ${JSON.stringify(
-        hrefs
-      )}`,
-      schema: event_map_schema,
+    const { system_prompt, user_prompt } = find_events_prompt({
+      text: this.truncatePrompt(text),
+      hrefs,
     });
 
-    if (!result) {
-      console.log("llm unable to parse", GALLERY_URL);
+    try {
+      const result = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: event_map_schema,
+      });
+
+      if (!result) {
+        console.log("llm unable to parse", GALLERY_URL);
+        return [];
+      }
+
+      return result.object.events;
+    } catch (error) {
+      console.error("error calling LLM to find events", error);
       return [];
     }
-
-    return result.object.events;
   }
 
-  extractDetails = async (text: string | undefined) => {
-    if (!text) {
-      console.log("no text passed to extractDetails");
-      return undefined;
-    }
+  extractDetails = async (page_text: string) => {
+    const { system_prompt, user_prompt } = extract_event_details_prompt({
+      page_text,
+    });
 
     try {
       const data = await generateObject({
         model: openai("gpt-4o-mini"),
-        system:
-          "You are a diligent researcher tasked with collecting information about art exhibitions in London." +
-          "Your task is to extract specific details about exhibitions",
-        prompt: text,
+        system: system_prompt,
+        prompt: user_prompt,
         schema: event_details_schema,
       });
 
@@ -150,19 +158,136 @@ export class EventScraper {
     }
   };
 
-  getImages = async (key: string) => {
+  extractImages = async (
+    key: string,
+    event_name: string,
+  ): Promise<string[]> => {
     const page = this.getPage(key);
 
-    const imageElements = await page?.evaluate(() =>
-      Array.from(document.querySelectorAll("img")).map((element) => element.src)
+    if (!page) {
+      this.closePage(key, "No key for page provided to extract image method");
+      return [];
+    }
+
+    const imageElements = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("img")).map(
+        (element) => element.src,
+      ),
     );
 
     const jpgs =
       imageElements?.filter((image) => !image.endsWith(".svg")) ?? [];
 
-    const firstFive = jpgs.slice(0, 5);
+    // TODO also scrap ones that are tiny e.g. https://a-i-gallery.com/exhibitions/63-feeling-like-home-tenter-ground-london/press_release_text/ returns the related artist images at the bottom of the page which are tiny
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: `
+          You are a diligent lead researcher.
+          You have received a "list of image urls".
+          Your job is to:
+            1. Carefully select the most likely images that correspond to the event
+            2. Pick a maximum of 5 images
+            3. Reject images that do not correspond to the event for example a logo
+            4. Reject image formats that are not a jpg, jpeg, png, webp or similar. For example you should reject .svg and base64 image formats
+        `,
+        prompt: `The event name is ${event_name}. Here is the "List of images" ${jpgs}`,
+        schema: event_image_schema,
+      });
+      return data.object.image_urls;
+    } catch (error) {
+      console.log("LLM error, unable to choose most likely images");
+      return [];
+    }
+  };
 
-    return firstFive;
+  provide_feedback_on_record = async (
+    record: z.infer<typeof event_details_schema>,
+    source_of_truth: string | undefined,
+  ) => {
+    if (!source_of_truth) {
+      console.log("no text passed to provide_feedback_on_record");
+      return undefined;
+    }
+
+    console.log("calling provide_feedback_on_record with record:", !!record);
+    console.log(
+      "calling provide_feedback_on_record with text:",
+      !!source_of_truth,
+    );
+
+    const { system_prompt, user_prompt } = provide_feedback_prompt({
+      record,
+      source_of_truth,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4"),
+        schema: feedback_schema,
+        system: system_prompt,
+        prompt: user_prompt,
+      });
+
+      return {
+        ...data.object,
+        has_feedback: Object.values(data.object).some(
+          (predicate) => predicate !== null,
+        ),
+      };
+    } catch (error) {
+      console.log("Error extracting data:", error);
+      throw error;
+    }
+  };
+
+  action_feedback = async ({
+    feedback,
+    original_record,
+    source_of_truth,
+  }: {
+    feedback: z.infer<typeof feedback_schema>;
+    original_record: z.infer<typeof event_details_schema>;
+    source_of_truth: string;
+  }) => {
+    console.log("original record hmmmm", original_record);
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        schema: event_details_schema,
+        system: `
+        You are a data accuracy assistant. Your task is to update an existing JSON record "Original record" by applying any actionable feedback received (“Feedback”), cross-referencing the “Source of truth” for the correct values.
+
+        You have three inputs:
+
+        Feedback – A JSON object where each property matches a field in the schema. If the property’s value in the feedback is:
+        null: There is no discrepancy or no change needed for that property, so do not alter that property in the “Original record”
+        A short feedback string: Indicates something is incorrect or missing. Use the “Source of truth” to supply or fix the property.
+
+        Source of truth – A text block containing the most accurate information about the record. If the "Feedback" indicates a property is wrong or missing, rely on this text block to correct that property.
+
+        Original record – The initial JSON record you must update.
+
+        Instructions:
+
+        Only modify properties that have actionable feedback in the "Feedback".
+
+        If a property’s value in the "Feedback" is null, do not change that property from its value in the "Original record".
+
+        Use the "Source of truth" to find the correct replacement values for properties marked with feedback.
+
+        If the "Source of truth" does not contain enough information to fix the property, return null for that property.`,
+        prompt: `
+        "Feedback": ${JSON.stringify(feedback)},
+        "Source of truth": ${source_of_truth},
+        "Original record": ${JSON.stringify(original_record)}`,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+      throw error;
+    }
   };
 
   convertDate = (date: string | null) => {
@@ -172,75 +297,28 @@ export class EventScraper {
     return isNaN(converted.getTime()) ? null : converted;
   };
 
-  checkWork = async (
-    record: z.infer<typeof event_details_schema>,
-    text: string | undefined
-  ) => {
-    if (!text) {
-      console.log("no text passed to checkWork");
-      return undefined;
-    }
-
-    try {
-      const data = await generateObject({
-        model: openai("gpt-4o-mini"),
-        system: `
-          You are a diligent lead researcher.
-          You have received a "Submitted record" (the junior researcher's work) and a "Source of truth".
-          Your job is to:
-            1. Carefully compare each property of the submitted record with the source of truth.
-            2. If a property is correct, do not change it.
-            3. If a property is incorrect, update it using ONLY the source of truth.
-            4. If the source of truth contradicts the submitted record, favor the source of truth.
-            5. If the source of truth does not provide enough information to correct a given property, leave it as-is or remove it.
-            6. Always output a JSON object that follows the "event_details_schema" exactly.
-
-          Important:
-            - DO NOT include line breaks in strings e.g. /n
-            - Ignore the start date and end date formatting! if the date is technically the same then favour the submitted record. for example 2025-02-20 is the same as 20th February 2025 here you should favour the submitted record and not update the date.
-            - It is preferable that you do not make any changes. Only make changes if the record is categorically incorrect.
-        `,
-        prompt: `
-          Submitted record:
-          #####${record}#####
-          Source of truth:
-          #####${text}#####
-        `,
-        schema: event_details_schema,
-      });
-
-      return data.object;
-    } catch (error) {
-      console.log("Error extracting data:", error);
-    }
-  };
-
   insertDbRecord = async (
     record: z.infer<typeof event_details_schema>,
     url: string,
-    gallery_id: string
+    gallery_id: string,
   ) => {
     const db = new DatabaseService();
 
     await db.insert_exhibition({
       exhibition_name: record.exhibition_name,
       info: record.info,
-      featured_artists: JSON.stringify(record.featured_artists ?? []),
+      featured_artists: JSON.stringify(record.featured_artists),
       exhibition_page_url: url,
-      image_urls: JSON.stringify(record.image_urls ?? []),
-      schedule: "",
-      is_ticketed: record.ticket?.is_ticketed ?? false,
-      ticket_description: "",
-      // schedule: JSON.stringify(record.schedule ?? []),
-      // is_ticketed: record.ticket?.is_ticketed ?? false,
-      // ticket_description: record.ticket?.description ?? "",
-      start_date: this.convertDate(record.start_date),
-      end_date: this.convertDate(record.end_date),
+      image_urls: JSON.stringify(record.image_urls),
+      // schedule: JSON.stringify(record.schedule),
+      is_ticketed: !!record.is_ticketed,
+      start_date: this.convertDate(record?.start_date),
+      end_date: this.convertDate(record?.end_date),
       private_view_start_date: this.convertDate(
-        record.private_view?.start_date ?? null
+        record.private_view_start_date ?? null,
       ),
       private_view_end_date: this.convertDate(
-        record.private_view?.end_date ?? null
+        record.private_view_end_date ?? null,
       ),
       gallery_id,
     });
@@ -248,7 +326,7 @@ export class EventScraper {
 
   insert_seen_exhibition = async (
     exhibition_name: string,
-    gallery_id: string
+    gallery_id: string,
   ) => {
     const db = new DatabaseService();
     await db.insert_seen_exhibition(exhibition_name, gallery_id);
@@ -260,8 +338,8 @@ export class EventScraper {
 
   blockEvent = async (
     event: Event,
-    seen_exhibitions: string[]
-  ): Promise<{should_skip: boolean; reason?: string}> => {
+    seen_exhibitions: string[],
+  ): Promise<{ should_skip: boolean; reason?: string }> => {
     if (!event.name) {
       return {
         should_skip: true,
@@ -269,12 +347,12 @@ export class EventScraper {
       };
     }
 
-    if (this.hasEventEnded(event.end_date)) {
-      return {
-        should_skip: true,
-        reason: "Event already ended",
-      };
-    }
+    // if (this.hasEventEnded(event.end_date)) {
+    //   return {
+    //     should_skip: true,
+    //     reason: "Event already ended",
+    //   };
+    // }
 
     if (event.name === "Private view") {
       return {
@@ -283,12 +361,12 @@ export class EventScraper {
       };
     }
 
-    if (seen_exhibitions.includes(event.name)) {
-      return {
-        should_skip: true,
-        reason: "Already seen",
-      };
-    }
+    // if (seen_exhibitions.includes(event.name)) {
+    //   return {
+    //     should_skip: true,
+    //     reason: "Already seen",
+    //   };
+    // }
 
     return {
       should_skip: false,
@@ -331,6 +409,7 @@ export class EventScraper {
   };
 
   async handler(url: string, gallery_id: string) {
+    console.log("launching browser");
     await this.launchBrowser();
     console.time("scraping time");
     console.log("scraping url", url);
@@ -347,19 +426,23 @@ export class EventScraper {
     const page_text = await this.getInnerText(page_key);
     const hrefs = await this.getHrefs(page_key);
     const events = await this.findEvents(page_text, hrefs);
+    console.log("events", events);
+    // TODO create a custom assert method close connection, break and log error
+    if (!events.length) {
+      this.closePage(page_key, `No events found for ${url}`);
+      return;
+    }
 
     const db = new DatabaseService();
     const seen_exhibitions = await db.get_seen_exhibitions();
 
     console.log("seen exhibitions", seen_exhibitions.length);
 
-    console.log("events", events);
-
     await Promise.all(
       events.map(async (event) => {
-        const {should_skip, reason} = await this.blockEvent(
+        const { should_skip, reason } = await this.blockEvent(
           event,
-          seen_exhibitions
+          seen_exhibitions,
         );
 
         if (should_skip) {
@@ -371,41 +454,76 @@ export class EventScraper {
 
         await this.visitWebsite(event.url);
 
-        const page_text = await this.getInnerText(page_key);
-        const details = await this.extractDetails(page_text);
+        const source_of_truth = await this.getInnerText(page_key);
+
+        if (!source_of_truth) {
+          await this.closePage(
+            page_key,
+            `no source of truth found ${event.url}`,
+          );
+          return;
+        }
+
+        let details = await this.extractDetails(source_of_truth);
 
         if (!details) {
           await this.closePage(page_key, `no details found ${event.url}`);
           return;
         }
 
-        details.exhibition_name = event.name;
+        // details.exhibition_name = event.name;
 
-        const checked = await this.checkWork(details, page_text);
-        const images = await this.getImages(page_key);
+        // if (this.hasEventEnded(details.end_date)) {
+        //   await this.closePage(
+        //     page_key,
+        //     `event already ended. name: ${event.name} / url: ${event.url}`,
+        //   );
+        //   return;
+        // }
 
-        if (!checked) {
-          await this.closePage(page_key, `no checked work ${event.url}`);
-          return;
+        const feedback = await this.provide_feedback_on_record(
+          details,
+          source_of_truth,
+        );
+
+        if (feedback?.has_feedback) {
+          console.log("do something with the feedback m8y");
+          console.log("original details", details);
+          console.log("feedback", feedback);
+
+          details = await this.action_feedback({
+            feedback,
+            original_record: details,
+            source_of_truth,
+          });
         }
 
-        if (this.hasEventEnded(checked.end_date)) {
-          await this.closePage(
+        // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
+
+        if (this.hasEventEnded(details.end_date)) {
+          this.closePage(
             page_key,
-            `event already ended. name: ${event.name} / url: ${event.url}`
+            `event already ended. name: ${event.name} / url: ${event.url}`,
           );
           return;
         }
 
-        checked.image_urls = images;
+        if (!details.exhibition_name) {
+          this.closePage(
+            page_key,
+            `no exhibition name found. name: ${event.name} / url: ${event.url}`,
+          );
+          return;
+        }
 
-        console.log(`checked work`, checked);
+        const images = await this.extractImages(page_key, event.name);
+        details.image_urls = images;
 
-        await this.insertDbRecord(checked, event.url, gallery_id);
+        await this.insertDbRecord(details, event.url, gallery_id);
         await this.insert_seen_exhibition(event.name, gallery_id);
 
         await this.closePage(page_key, `inserted record, done`);
-      })
+      }),
     );
 
     await this.closePage(page_key, `scraping done`);

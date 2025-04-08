@@ -14,6 +14,10 @@
    It's in flipping 2020 make the AI better
 7. Feeling like home need to add images!
 8. Yves Dana need to add images!
+9. Remove stage hand shite
+10. Remove random gallery json files
+11. In the promise.all we might not need to await everything fire and forget?
+12. Use promose.allsettled instead?
 
 seen exhibitions > 1156
 null names > 24
