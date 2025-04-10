@@ -6,12 +6,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const record = {
-  exhibition_name: "In the long silenc",
+  exhibition_name: "In the long silence",
   start_date: "2025-02-13",
   end_date: "2025-03-03",
   private_view_start_date: "2025-03-03",
   private_view_end_date: null,
-  featured_artists: ["Milly Williams"],
+  featured_artists: ["Dylan Williams"],
   info: "Workplace is pleased to present In the long silence by Welsh artist Dylan Williams. Drawing from a disparate range of sources, including film stills, memories, and transient scenes observed in everyday life, Williams new works are a reconciliation of intimate, familiar moments that evoke feelings of anticipation, suspense, and psychological tension - revealing the sublime in the mundane.",
   image_urls: [],
   is_ticketed: false,
@@ -24,29 +24,47 @@ const record = {
   ],
 };
 
-const checked_work_schena = z.object({
-  exhibition_name: z.string().default(null).nullable(),
-  start_date: z.date().or(z.string()).default(null).nullable(),
-  end_date: z.date().or(z.string()).default(null).nullable(),
-  private_view_start_date: z.date().or(z.string()).default(null).nullable(),
-  private_view_end_date: z.date().or(z.string()).default(null).nullable(),
-  featured_artists: z.array(z.string()).default(null).or(z.string()).nullable(),
-  info: z.string().default(null).nullable(),
-  is_ticketed: z.boolean().or(z.string()).default(null).nullable(),
-  schedule: z
-    .array(
-      z
-        .object({
-          start_time: z.string().default(null).nullable(),
-          end_time: z.string().default(null).nullable(),
-          label: z.string().default(null).nullable(),
-        })
-        .default(null)
-        .nullable(),
-    )
-    .or(z.string())
+export const event_details_schema = z.object({
+  exhibition_name: z
+    .string()
+    .describe("the full name of the exhibition")
+    .nullable(),
+  start_date: z.string().describe("the date the event begins").nullable(),
+  end_date: z.string().describe("the date the event ends").nullable(),
+  private_view_start_date: z
+    .string()
+    .describe("the private view start date of the event")
+    .nullable(),
+  private_view_end_date: z
+    .string()
+    .describe("the private view end date of the event")
+    .nullable(),
+  featured_artists: z
+    .array(z.string())
+    .describe("the names of all the artists in the event")
     .default([])
     .nullable(),
+  info: z.string().describe("The information surrounding the event").nullable(),
+  image_urls: z
+    .array(z.string())
+    .describe("The url of the image of the event")
+    .default([])
+    .nullable(),
+  is_ticketed: z
+    .boolean()
+    .describe("Whether you need a ticket to attend this event")
+    .default(false),
+});
+
+export const feedback_schema = z.object({
+  exhibition_name: z.string().optional(),
+  start_date: z.date().or(z.string()).optional(),
+  end_date: z.date().or(z.string()).optional(),
+  private_view_start_date: z.date().or(z.string()).optional(),
+  private_view_end_date: z.date().or(z.string()).optional(),
+  featured_artists: z.array(z.string()).or(z.string()).optional(),
+  info: z.string().optional(),
+  is_ticketed: z.boolean().or(z.string()).optional(),
 });
 
 const page_text = `Open sign in modal
@@ -149,7 +167,7 @@ async function check_work(record, page_text) {
   try {
     const data = await generateObject({
       model: openai("gpt-4o"),
-      schema: checked_work_schena,
+      schema: feedback_schema,
       system: `
       You are a lead data analyst, responsible for ensuring the accuracy and consistency of exhibition data across our platform.
 
@@ -165,39 +183,29 @@ async function check_work(record, page_text) {
       For each property defined in the "Schema", compare the value in the "Submitted record" with the corresponding information in the "Source of truth".
 
       Exact String Matching for Non-Date Fields:
-      For string properties (e.g. exhibition_name, info etc.), perform an exact string comparison. If the Submitted record’s value is exactly the same as the value found in the "Source of truth", then return null for that property. Note that the string values must be an exact match, a partial match is NOT good enough it must be an exact match.
+      For string properties (e.g. exhibition_name, info etc.), perform an exact string comparison. If the Submitted record’s value is exactly the same as the value found in the "Source of truth", then do not return that property. Note that the string values must be an exact match, a partial match is NOT good enough it must be an exact match.
 
       Handle start_date & end_dates:
-      If the start_date, end_date differs only by formatting—for example, if they represent the same date in different text formats—do not treat it as incorrect. For example, if the "Source of truth" contains "2023-01-01" and the "Submitted record" contains "01/01/2023", treat them as a match and return null for that property.
+      If the start_date, end_date differs only by formatting—for example, if they represent the same date in different text formats—do not treat it as incorrect. For example, if the "Source of truth" contains "2023-01-01" and the "Submitted record" contains "01/01/2023", treat them as a match and do not return that property.
 
       Handle private_view_start_date & private_view_end_date:
-      A private view typically occurs the day before the start_date of the exhibition and must include a time. DO NOT use the start_date as the private_view_start_date and the end_date as the private_view_end_date for the private view properties. If the private_view_start_date & private_view_end_date do not exist in the "Source of truth" but they exist in the "Submitted record", provide a short feedback message.
-
-      If a property in the Submitted record is null, treat it as "not provided." Do not consider it "present in the record." If the Source of truth also does not mention it, then there is no discrepancy (return null).
+      Do not use the start_date as the private_view_start_date and the end_date as the private_view_end_date for the private view properties. If the private_view_start_date & private_view_end_date do not exist in the "Source of truth" but they exist in the "Submitted record", then do not include the properties. Only provide private view start and end dates if they are explicitly 100% in the "Source of truth". Private view start and end dates should include a date along with a timestamp.
 
 
       Provide Actionable Feedback Only:
       If a property exists in the "Source of truth" and its value in the "Submitted record" is missing or definitely incorrect, provide a short, concise feedback message indicating the discrepancy.
 
       Important:
-      1. Do not output any message for properties that are correct or if the property is not mentioned in the "Source of truth". Instead, return null for that property.
+
+      1. All properties in the schema are optional. If a property is correct or if the property is not mentioned in the "Source of truth", then do not include the property in your response.
       2. Do not include any statements like matches the "Source of truth." Only output feedback messages for actionable discrepancies.
       3. If you're unsure about the correctness of a property, provide a feedback message indicating that you're unsure.
       4. It is preferable to not provide any feedback. Only provide feedback on properties you are 100% sure are incorrect or missing.
-      5. Before returning feedback, double check that the feedback messages are accurate and explain fully what the problem(s) are. Remember your feedback will be used by a junior analyst to review and correct their submission.
-      6. If the Source of truth also does not mention that property, return null for that property (no feedback).
-
-      Example scenario:
-      - "Submitted record": { private_view_start_date: null }
-      - "Source of truth": (No mention of private view dates)
-      In this scenario, you must return:
-      { private_view_start_date: null }
-      +not a discrepancy message, because the record’s value is null and the Source of truth does not mention it.
-      `,
+      5. Before returning feedback, double check that the feedback messages are accurate and explain fully what the problem(s) are. Remember your feedback will be used by a junior analyst to review and correct their submission.`,
       prompt: `
       "Submitted record": ${JSON.stringify(record)}
       "Source of truth": ${page_text}
-      "Schema": ${checked_work_schena.shape}`,
+      "Schema": ${feedback_schema.shape}`,
     });
 
     return {
@@ -220,29 +228,34 @@ async function actionFeedback({ feedback, source_of_truth, original_record }) {
   try {
     const data = await generateObject({
       model: openai("gpt-4o"),
-      schema: checked_work_schena,
+      schema: event_details_schema,
       system: `
       You are a data accuracy assistant. Your task is to update an existing JSON record "Original record" by applying any actionable feedback received (“Feedback”), cross-referencing the “Source of truth” for the correct values.
 
       You have three inputs:
 
-      Feedback – A JSON object where each property matches a field in the schema. If the property’s value in the feedback is:
-      null: There is no discrepancy or no change needed for that property, so do not alter that property in the “Original record”
-      A short feedback string: Indicates something is incorrect or missing. Use the “Source of truth” to supply or fix the property.
+      Feedback:
+      A JSON object where each property matches a field in the schema.
 
-      Source of truth – A text block containing the most accurate information about the record. If the "Feedback" indicates a property is wrong or missing, rely on this text block to correct that property.
+      A short feedback string: Indicates something is incorrect or missing. Use the "Source of truth" to supply a fix for the property.
 
-      Original record – The initial JSON record you must update.
+      If a property does not exist in the feedback object there is no change needed, do not alter the property in the "Original record"
+
+      Source of truth:
+      A text block containing the most accurate information about the record. If the "Feedback" indicates a discrepancy, rely on this text block to correct the property.
+
+      Original record:
+      The initial JSON record you must update.
 
       Instructions:
 
-      Only modify properties that have actionable feedback in the "Feedback".
+      Only modify properties that have actionable feedback in the "Feedback" object.
 
-      If a property’s value in the "Feedback" is null, do not change that property from its value in the "Original record".
+      If a property does not exist in the "Feedback" object, do not change the property from its value in the "Original record".
 
       Use the "Source of truth" to find the correct replacement values for properties marked with feedback.
 
-      If the "Source of truth" does not contain enough information to fix the property, return null for that property.`,
+      If the "Source of truth" does not contain enough information to fix the property, return null for the property.`,
       prompt: `
       "Feedback": ${JSON.stringify(feedback)},
       "Source of truth": ${source_of_truth},
@@ -265,5 +278,4 @@ const updated_record = await actionFeedback({
 console.log("whoop updated record", updated_record);
 
 // TODO
-// The schema in event_scraper might need to change if private view is now flat
 // Consider channging dates to a date object instead of string in the schema & perhaps changes dates using js before comparison

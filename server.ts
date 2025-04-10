@@ -7,35 +7,39 @@ import { DatabaseService } from "./services/database.js";
 
 const app = new Hono().basePath("/api");
 
-app.get("/event-scraper", async () => {
+app.get("/event-scraper", async (context) => {
   const db = new DatabaseService();
   const galleries = await db.get_galleries();
   console.log("galleries", galleries.length);
   const scraper = new EventScraper();
 
-  const from = galleries.slice(125);
+  const from = galleries.slice(126);
   const single = galleries.filter((gallery) => gallery.id === 125);
 
   const done = [];
 
-  for (const gallery of single) {
+  for (const gallery of from) {
     if (gallery.name === "Cardi Gallery") continue;
 
     await scraper.handler(gallery.exhibition_page_url, gallery.id);
 
     done.push(gallery.id);
-    console.log(`done ${done.length} / ${single.length}`);
+    console.log(`done ${done.length} / ${from.length}`);
   }
+
+  // return context.text("Done");
 });
 
-app.get("/reviews-scraper", async () => {
+app.get("/reviews-scraper", async (context) => {
   const scraper = new ReviewScraper();
   await scraper.handler();
+  return context.text("Done");
 });
 
-app.get("/private-view-scraper", async () => {
+app.get("/private-view-scraper", async (context) => {
   const scraper = new PrivateViewScraper();
   await scraper.handler();
+  return context.text("Done");
 });
 
 serve(

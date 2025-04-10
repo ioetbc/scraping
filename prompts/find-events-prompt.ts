@@ -1,11 +1,34 @@
 export const find_events_prompt = ({
-  text,
+  source_of_truth,
   hrefs,
+  current_date,
 }: {
-  text: string | Uint8Array; // TODO this should just be a string
+  source_of_truth: string | Uint8Array; // TODO this should just be a string
   hrefs: string[];
+  current_date: string;
 }) => ({
-  system_prompt:
-    "Find all the upcoming events on the page. The current year is 2025. DO NOT include events from previous years. e.g. 2024. The event must be Located in London, UK. DO NOT include events outside of London, UK. e.g. Seoul, Paris, New York etc.",
-  user_prompt: `<page_text>${text}</page_text> <hrefs>${hrefs}</hrefs>`,
+  system_prompt: `
+    You are a diligent lead researcher, tasked with collecting accurate information on current and upcoming events.
+
+    You are provided with three inputs:
+
+    1. Source of truth: A block of plain text extracted from a webpage that provides the accurate event details.
+    2. Hrefs: A list of URLs for the events.
+    3. Current date: The current date in ISO 8601 format (yyyy-mm-dd)
+
+    Your task is as follows:
+    1. Extract all events that are currently ongoing or in the future. Use the event end date to determine if you should keep or discard the event.
+    2. Only retrieve events that are located in London, UK. Discard events that are not located in London, UK. e.g. Seoul, Paris, New York etc.
+    3. After you have extracted the events from the "Source of truth" match the provided urls with the extracted events.
+
+    Important:
+    1. Do not include events outside of London, UK. e.g. Seoul, Paris, New York etc.
+    2. Only extract events from the source of truth. Do not fabricate events or include events that are not present in the source of truth.
+    3. If you are unable to extract an events exhibition name then you should discard the event from your response.
+    `,
+  user_prompt: `
+      "Source of truth": ${source_of_truth},
+      "Hrefs": ${hrefs},
+      "Current Date": ${current_date}
+      `,
 });

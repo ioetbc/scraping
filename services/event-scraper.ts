@@ -2,6 +2,7 @@ import { Browser, launch, Page } from "puppeteer";
 import { GALLERY_URL } from "../const.js";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { format, isAfter } from "date-fns";
 
 // TODO export object from main schema file to avoid multiple imports from different places same for the prompts
 import {
@@ -19,18 +20,18 @@ import { DatabaseService } from "./database.js";
 import { z } from "zod";
 
 import { encoding_for_model } from "tiktoken";
-import { isAfter } from "date-fns";
-import { userInfo } from "os";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
 export class EventScraper {
   pages: Map<string, Page>;
   browser: Browser | undefined;
+  current_date: string;
 
   constructor() {
     this.pages = new Map();
     this.browser = undefined;
+    this.current_date = format(new Date(), "yyyy-MM-dd");
   }
 
   launchBrowser = async () => {
@@ -115,8 +116,9 @@ export class EventScraper {
     }
 
     const { system_prompt, user_prompt } = find_events_prompt({
-      text: this.truncatePrompt(text),
+      source_of_truth: this.truncatePrompt(text),
       hrefs,
+      current_date: this.current_date,
     });
 
     try {
@@ -149,6 +151,58 @@ export class EventScraper {
         model: openai("gpt-4o-mini"),
         system: system_prompt,
         prompt: user_prompt,
+        schema: event_details_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+    }
+  };
+
+  extract_private_view = async (page_text: string) => {
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: `
+        You are a diligent lead researcher tasked with collecting information about private viewings from a single input:
+
+        Source of Truth: A block of text from a webpage that accurately describes the event.
+
+        Your Objective:
+
+        Identify a Private Viewing: Check if the source text indicates a private viewing.
+
+        A private viewing can be labeled with terms such as:
+
+        "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" or any similar phrase.
+
+        Extract Dates: If a private viewing exists, extract two pieces of information:
+
+        private_view_start_date (in ISO 8601 format with time)
+        private_view_end_date (in ISO 8601 format with time)
+
+        Do not use any general event start_date or end_date as the private viewing times. Only rely on what is explicitly stated for the private view.
+
+        Example:
+        If the Source of Truth says:
+
+        "Opening reception:
+        10 April 18:00 - 20:00"
+
+        You should respond with:
+        private_view_start_date: "2023-04-10T18:00:00.000Z"
+        private_view_end_date:   "2023-04-10T20:00:00.000Z"
+
+        Important:
+
+        1. If a private view is identified, return the private_view_start_date and private_view_end_date in ISO 8601 format with time.
+        2. If you find no private view, do not fabricate any dates. Return null.
+        3. Use ISO 8601 for all returned dates and times.
+        4. No Fabrication: Only use date/time details found in the Source of Truth.
+        5. Ignore Example Values: Any dates/times shown in these instructions are for demonstration only. Do not reference them directly in your answer.
+        `,
+        prompt: `Source of Truth: ${page_text}`,
         schema: event_details_schema,
       });
 
@@ -201,20 +255,17 @@ export class EventScraper {
     }
   };
 
-  provide_feedback_on_record = async (
+  provide_feedback = async (
     record: z.infer<typeof event_details_schema>,
     source_of_truth: string | undefined,
   ) => {
     if (!source_of_truth) {
-      console.log("no text passed to provide_feedback_on_record");
+      console.log("no text passed to provide_feedback");
       return undefined;
     }
 
-    console.log("calling provide_feedback_on_record with record:", !!record);
-    console.log(
-      "calling provide_feedback_on_record with text:",
-      !!source_of_truth,
-    );
+    console.log("calling provide_feedback with record:", !!record);
+    console.log("calling provide_feedback with text:", !!source_of_truth);
 
     const { system_prompt, user_prompt } = provide_feedback_prompt({
       record,
@@ -223,7 +274,7 @@ export class EventScraper {
 
     try {
       const data = await generateObject({
-        model: openai("gpt-4"),
+        model: openai("gpt-4o"),
         schema: feedback_schema,
         system: system_prompt,
         prompt: user_prompt,
@@ -250,7 +301,7 @@ export class EventScraper {
     original_record: z.infer<typeof event_details_schema>;
     source_of_truth: string;
   }) => {
-    console.log("original record hmmmm", original_record);
+    console.log("actioning feedback");
     try {
       const data = await generateObject({
         model: openai("gpt-4o-mini"),
@@ -260,23 +311,28 @@ export class EventScraper {
 
         You have three inputs:
 
-        Feedback – A JSON object where each property matches a field in the schema. If the property’s value in the feedback is:
-        null: There is no discrepancy or no change needed for that property, so do not alter that property in the “Original record”
-        A short feedback string: Indicates something is incorrect or missing. Use the “Source of truth” to supply or fix the property.
+        Feedback:
+        A JSON object where each property matches a field in the schema.
 
-        Source of truth – A text block containing the most accurate information about the record. If the "Feedback" indicates a property is wrong or missing, rely on this text block to correct that property.
+        A short feedback string: Indicates something is incorrect or missing. Use the "Source of truth" to supply a fix for the property.
 
-        Original record – The initial JSON record you must update.
+        If a property does not exist in the feedback object there is no change needed, do not alter the property in the "Original record"
+
+        Source of truth:
+        A text block containing the most accurate information about the record. If the "Feedback" indicates a discrepancy, rely on this text block to correct the property.
+
+        Original record:
+        The initial JSON record you must update.
 
         Instructions:
 
-        Only modify properties that have actionable feedback in the "Feedback".
+        Only modify properties that have actionable feedback in the "Feedback" object.
 
-        If a property’s value in the "Feedback" is null, do not change that property from its value in the "Original record".
+        If a property does not exist in the "Feedback" object, do not change the property from its value in the "Original record".
 
         Use the "Source of truth" to find the correct replacement values for properties marked with feedback.
 
-        If the "Source of truth" does not contain enough information to fix the property, return null for that property.`,
+        If the "Source of truth" does not contain enough information to fix the property, return null for the property.`,
         prompt: `
         "Feedback": ${JSON.stringify(feedback)},
         "Source of truth": ${source_of_truth},
@@ -285,7 +341,7 @@ export class EventScraper {
 
       return data.object;
     } catch (error) {
-      console.log("Error extracting data:", error);
+      console.log("Error actioning feedback:", error);
       throw error;
     }
   };
@@ -414,6 +470,8 @@ export class EventScraper {
     console.time("scraping time");
     console.log("scraping url", url);
 
+    console.log("current_date", this.current_date);
+
     if (!this.browser) {
       console.log("no browser found");
       return;
@@ -423,8 +481,11 @@ export class EventScraper {
 
     await this.visitWebsite(url);
 
+    console.log("getting page text");
     const page_text = await this.getInnerText(page_key);
+    console.log("getting hrefs");
     const hrefs = await this.getHrefs(page_key);
+    console.log("getting events");
     const events = await this.findEvents(page_text, hrefs);
     console.log("events", events);
     // TODO create a custom assert method close connection, break and log error
@@ -452,6 +513,8 @@ export class EventScraper {
 
         const page_key = event.url;
 
+        console.log("visiting event details page", event.url);
+
         await this.visitWebsite(event.url);
 
         const source_of_truth = await this.getInnerText(page_key);
@@ -464,7 +527,9 @@ export class EventScraper {
           return;
         }
 
-        let details = await this.extractDetails(source_of_truth);
+        // let details = await this.extractDetails(source_of_truth);
+        const exhibition_name =
+          await this.extract_exhibition_name(source_of_truth);
 
         if (!details) {
           await this.closePage(page_key, `no details found ${event.url}`);
@@ -481,14 +546,9 @@ export class EventScraper {
         //   return;
         // }
 
-        const feedback = await this.provide_feedback_on_record(
-          details,
-          source_of_truth,
-        );
+        const feedback = await this.provide_feedback(details, source_of_truth);
 
         if (feedback?.has_feedback) {
-          console.log("do something with the feedback m8y");
-          console.log("original details", details);
           console.log("feedback", feedback);
 
           details = await this.action_feedback({
@@ -501,7 +561,7 @@ export class EventScraper {
         // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
         if (this.hasEventEnded(details.end_date)) {
-          this.closePage(
+          await this.closePage(
             page_key,
             `event already ended. name: ${event.name} / url: ${event.url}`,
           );
@@ -509,7 +569,7 @@ export class EventScraper {
         }
 
         if (!details.exhibition_name) {
-          this.closePage(
+          await this.closePage(
             page_key,
             `no exhibition name found. name: ${event.name} / url: ${event.url}`,
           );

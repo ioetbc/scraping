@@ -37,3 +37,9 @@ The request could not be satisfied.
 ## Private view
 
 [] https://www.bosseandbaum.com/exhibitions/12397/ (Does not include time of the PV)
+
+[] https://www.pipelinecontemporary.com/ (should go to homepage current url is specific exhibition
+
+[] Whitechapel Gallery hangs forever after scraping
+
+[] multiples of the same artist make them unique in the prompt https://www.richardsaltoun.com/exhibitions/140-anna-perach-a-leap-of-sympathy
