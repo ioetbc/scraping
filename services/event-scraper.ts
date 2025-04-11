@@ -142,7 +142,7 @@ export class EventScraper {
     }
   }
 
-  extractDetails = async (page_text: string) => {
+  extract_details = async (page_text: string) => {
     const { system_prompt, user_prompt } = extract_event_details_prompt({
       page_text,
     });
@@ -535,7 +535,7 @@ export class EventScraper {
         }
 
         console.log("source_of_truth", source_of_truth);
-        let details = await this.extractDetails(source_of_truth);
+        let details = await this.extract_details(source_of_truth);
         // const private_view = await this.extract_private_view(source_of_truth);
 
         if (!details) {
