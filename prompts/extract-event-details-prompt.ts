@@ -18,29 +18,98 @@ export const extract_event_details_prompt = ({
 
   If you are unable to extract a property, set it to null
 
-  How to handle start and end dates:
-  If you are unable to extract a start date, set it to null. If you are unable to extract an end date, set it to null. If you are only able to extract a start date and the end date is not present in the "Source of truth", set the end date to the start date.
+  <start_date & end_date>
+    The start date and end date of the event.
+    Look for phrases like "12 Apr – 24 May 2025".
+    Convert extracted dates to ISO 8601 format.
 
-  Convert all dates to ISO 8601 format. For example, September 27, 2022 is represented as 2022-09-27.
+    Example:
+    If the Source of Truth states:
+    "15 May—24 June 2025"
 
-  How to handle private_view_start_date & private_view_end_date:
-  Do not use the start_date as the private_view_start_date and the end_date as the private_view_end_date.
+    You should respond with:
+    start_date: "2025-05-15"
+    end_date:   "2025-06-24"
 
-  Private view dates will most likely include a time e.g. 9th April 18:00 - 20:00. Not all events will have a private view date. Only extract a private view if the date is prefixed with either one of (Private View, PV, Opening night, or similar)
+    Important private view information:
+      1. If you are unable to extract a start date, set it to null.
+      2. If you are unable to extract an end date, set it to null.
+      3. If you are only able to extract a start date and the end date is not present in the "Source of truth", set the end date to the start date.
+      4. Convert all dates to ISO 8601 format. For example, September 27, 2025 is represented as 2025-09-27.
+      5. If you are unable to accurately infer the year of the event, you can assume the current year. For example if the event states 12th Jan - 15th Feb. You can assume it is referring to the current year.
+  </start_date & end_date>
 
-  Remember to use the ISO 8601 with time for private view dates. e.g, September 27, 2022 at 6 p.m. is represented as 2022-09-27 18:00:00.000.
+  <private_view>
+    Identify a Private Viewing: Check if the source text indicates a private viewing.
 
-  How to handle Featured artists:
-  Featured artists may not explicitly set in the source of truth with an appropriate prefix, you may need to infer them from the context of the exhibition details or the exhibition name.
+    A private viewing can be labeled with terms such as:
 
-  How to handle the exhibition name:
-  Exhibition names should not include the artists name.
+    "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" "Preview" or any similar phrase.
 
-  How to handle the is_ticketed property:
-  The is_ticketed property should only be set to true if the user has to RSVP, book, pay for a ticket or anything similar. The default value for ticketing is false. Only set the property to true if you are 100% sure that a ticket is required. If you are in doubt, set it to false.
+    Extract Dates: If a private viewing exists, extract two pieces of information:
 
-  How to handle the info property:
-  Provide a useful description of the event. Put yourself in the shoes of a potential attendee of an event. Extract only information from the "Source of truth" which describe the event in full detail. Do not cherry pick sentences from paragraphs, provide the full text but do not include useless information. Remember you must only use the "Source of truth" and not fabricate or make up any texts.
+    private_view_start_date (in ISO 8601 format with time)
+    private_view_end_date (in ISO 8601 format with time)
+
+    Do not use the general event start_date or end_date as the private viewing times. Only rely on what is explicitly stated for the private view.
+
+    It is parammount that you extract the exact time for the private view. Double check that the time is accurate and that it is in the correct format.
+
+    <example_1>
+      If the Source of Truth says:
+
+      "Opening reception:
+      10 April 18:00 - 20:00"
+
+      You should respond with:
+      private_view_start_date: "2025-04-10T18:00:00.000Z"
+      private_view_end_date:   "2025-04-10T20:00:00.000Z"
+    </example_1>
+
+    <example_2>
+      If the Source of Truth says:
+
+      "Opening reception: 6:30–8:30pm"
+
+      You should respond with:
+      private_view_start_date: "2025-04-10T18:30:00.000Z"
+      private_view_end_date:   "2025-04-10T20:30:00.000Z"
+    </example_2>
+
+    Important private view infomation:
+
+    1. If a private view is identified, return the private_view_start_date and private_view_end_date in ISO 8601 format with time.
+    2. If you find no private view, do not fabricate any dates. Return null.
+    3. Use ISO 8601 for all returned dates and times.
+    4. Always use the exact time of the event as stated in the "Source of Truth". For example if the event starts at 6:15pm, record 2025-04-10T18:15:00.000Z and not 2025-04-10T18:00:00.000Z
+    4. No Fabrication: Only use date/time details found in the "Source of Truth".
+    5. Ignore Example Values: Any dates/times shown in these instructions are for demonstration only. Do not reference them directly in your answer.
+  </private_view>
+
+  <featured_artists>
+    Featured artists may not explicitly set with an appropriate prefix, you may need to infer them from the exhibition details, exhibition name or any other relevant information from the "Source of Truth". If you are infering the featured artists, it is paramount that you are 100% sure that the information you are providing is accurate and reliable. Never include the gallery name or exhibition name as a featured artist.
+
+    Important featured artist information:
+
+    1. The exhibition name should not be included in the featured artists list.
+    2. The gallery name should not be included in the featured artists list.
+    3. Featured artists should be unique and not repeated in the provided list.
+  </featured_artists>
+
+  <exhibition_name>
+    Important exhibition name information:
+    1. The Exhibition name should not include the artists name.
+    2. The Exhibition name should not be the gallery name.
+  </exhibition_name>
+
+
+  <is_ticketed>
+    The is_ticketed property should only be set to true if the user has to RSVP, book, pay for a ticket or anything similar. The default value for ticketing is false. Only set the property to true if you are 100% sure that a ticket is required. If you are in doubt, set it to false.
+  </is_ticketed>
+
+  <info>
+    Put yourself in the shoes of a potential attendee of the event. Extract only information from the "Source of truth" which describe the event in full detail. Do not cherry pick sentences from paragraphs, provide the full text but do not include useless information. Remember you must only use the "Source of truth" and not fabricate or make up any texts.
+  </info>
 
   Important:
   1. All properties in the schema are nullable. If you're unable to accurately extract a property from the "Source of truth," then set this property to null.

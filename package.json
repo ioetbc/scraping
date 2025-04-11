@@ -6,7 +6,8 @@
     "dev": "tsx index.ts",
     "custom": "tsx main-2.ts",
     "postinstall": "playwright install",
-    "serve": "tsx watch server.ts"
+    "serve": "tsx watch server.ts",
+    "eval:dev": "evalite watch --threshold=70"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.5",
@@ -32,7 +33,10 @@
   },
   "devDependencies": {
     "@types/pg": "^8.11.11",
+    "autoevals": "^0.0.127",
+    "evalite": "^0.10.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.9"
   }
 }

@@ -13,6 +13,11 @@ export const feedback_schema = z.object({
   is_ticketed: z.boolean().or(z.string()).optional(),
 });
 
+export const private_view_schema = z.object({
+  private_view_start_date: z.string().nullable(),
+  private_view_end_date: z.string().nullable(),
+});
+
 export const event_details_schema = z.object({
   exhibition_name: z
     .string()

@@ -8,6 +8,7 @@ import { format, isAfter } from "date-fns";
 import {
   event_details_schema,
   feedback_schema,
+  private_view_schema,
 } from "../zod/event-details-schema.js";
 import { event_map_schema } from "../zod/event-map-schema.js";
 import { event_image_schema } from "../zod/event-image-schema.js";
@@ -56,7 +57,7 @@ export class EventScraper {
         timeout: 60000,
       });
     } catch (error) {
-      console.log("error visiting", url);
+      console.log("error visiting", error);
       await this.closePage(url, "error during navigation");
       return;
     }
@@ -106,7 +107,7 @@ export class EventScraper {
     return truncatedPrompt;
   };
 
-  async findEvents(
+  async find_events(
     text: string | undefined,
     hrefs: string[],
   ): Promise<Event[]> {
@@ -175,7 +176,7 @@ export class EventScraper {
 
         A private viewing can be labeled with terms such as:
 
-        "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" or any similar phrase.
+        "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" "Preview" or any similar phrase.
 
         Extract Dates: If a private viewing exists, extract two pieces of information:
 
@@ -203,7 +204,7 @@ export class EventScraper {
         5. Ignore Example Values: Any dates/times shown in these instructions are for demonstration only. Do not reference them directly in your answer.
         `,
         prompt: `Source of Truth: ${page_text}`,
-        schema: event_details_schema,
+        schema: private_view_schema,
       });
 
       return data.object;
@@ -461,6 +462,9 @@ export class EventScraper {
       return false;
     }
 
+    console.log("eventEndDate", eventEndDate);
+    console.log("now", now);
+
     return !isAfter(eventEndDate, now);
   };
 
@@ -486,7 +490,10 @@ export class EventScraper {
     console.log("getting hrefs");
     const hrefs = await this.getHrefs(page_key);
     console.log("getting events");
-    const events = await this.findEvents(page_text, hrefs);
+    console.log("page_text", page_text);
+    console.log("hrefs", hrefs);
+    const events = await this.find_events(page_text, hrefs);
+    console.log("events.length", events.length);
     console.log("events", events);
     // TODO create a custom assert method close connection, break and log error
     if (!events.length) {
@@ -527,14 +534,26 @@ export class EventScraper {
           return;
         }
 
-        // let details = await this.extractDetails(source_of_truth);
-        const exhibition_name =
-          await this.extract_exhibition_name(source_of_truth);
+        console.log("source_of_truth", source_of_truth);
+        let details = await this.extractDetails(source_of_truth);
+        // const private_view = await this.extract_private_view(source_of_truth);
 
         if (!details) {
           await this.closePage(page_key, `no details found ${event.url}`);
           return;
         }
+
+        // console.log(`private viewings haha ${details.exhibition_name}`, {
+        //   private_view_start_date_old: details.private_view_start_date,
+        //   private_view_end_date_old: details.private_view_end_date,
+        //   private_view_start_date_new: private_view?.private_view_start_date,
+        //   private_view_end_date_new: private_view?.private_view_end_date,
+        // });
+
+        // details.private_view_start_date =
+        //   private_view?.private_view_start_date ?? null;
+        // details.private_view_end_date =
+        //   private_view?.private_view_end_date ?? null;
 
         // details.exhibition_name = event.name;
 
@@ -546,17 +565,17 @@ export class EventScraper {
         //   return;
         // }
 
-        const feedback = await this.provide_feedback(details, source_of_truth);
+        // const feedback = await this.provide_feedback(details, source_of_truth);
 
-        if (feedback?.has_feedback) {
-          console.log("feedback", feedback);
+        // if (feedback?.has_feedback) {
+        //   console.log("feedback", feedback);
 
-          details = await this.action_feedback({
-            feedback,
-            original_record: details,
-            source_of_truth,
-          });
-        }
+        //   details = await this.action_feedback({
+        //     feedback,
+        //     original_record: details,
+        //     source_of_truth,
+        //   });
+        // }
 
         // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 

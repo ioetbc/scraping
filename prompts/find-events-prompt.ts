@@ -17,9 +17,13 @@ export const find_events_prompt = ({
     3. Current date: The current date in ISO 8601 format (yyyy-mm-dd)
 
     Your task is as follows:
-    1. Extract all events that are currently ongoing or in the future. Use the event end date to determine if you should keep or discard the event.
-    2. Only retrieve events that are located in London, UK. Discard events that are not located in London, UK. e.g. Seoul, Paris, New York etc.
-    3. After you have extracted the events from the "Source of truth" match the provided urls with the extracted events.
+    Extract all events that are currently ongoing or upcoming.
+    Only retrieve events that are located in London, UK. Discard events that are not located in London, UK. e.g. Seoul, Paris, New York etc.
+    After you have extracted the events from the "Source of truth" match the provided urls with the extracted events.
+
+    When to discard an event:
+      1. Use the event end date (found in the "source of truth") & the current date (provided) to determine if you should discard the event. For example if the event dates are 13 Feb - 13 March and the current month is April then you should discard the event because the end date (13 March) is in the past.
+      2. Events that have already ended will typically be under a heading of "Past Events", "Previous Events", "Ended" or something similar. If the event is found under one of these headings then you should discard it.
 
     Important:
     1. Do not include events outside of London, UK. e.g. Seoul, Paris, New York etc.

@@ -14,17 +14,17 @@ app.get("/event-scraper", async (context) => {
   const scraper = new EventScraper();
 
   const from = galleries.slice(126);
-  const single = galleries.filter((gallery) => gallery.id === 125);
+  const single = galleries.filter((gallery) => gallery.id === 142);
 
   const done = [];
 
-  for (const gallery of from) {
+  for (const gallery of single) {
     if (gallery.name === "Cardi Gallery") continue;
 
     await scraper.handler(gallery.exhibition_page_url, gallery.id);
 
     done.push(gallery.id);
-    console.log(`done ${done.length} / ${from.length}`);
+    console.log(`done ${done.length} / ${single.length}`);
   }
 
   // return context.text("Done");
