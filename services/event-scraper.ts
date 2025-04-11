@@ -481,33 +481,27 @@ export class EventScraper {
       return;
     }
 
-    const page_key = url;
-
-    await this.visitWebsite(url);
-
-    console.log("getting page text");
-    const page_text = await this.getInnerText(page_key);
-    console.log("getting hrefs");
-    const hrefs = await this.getHrefs(page_key);
-    console.log("getting events");
-    console.log("page_text", page_text);
-    console.log("hrefs", hrefs);
-    const events = await this.find_events(page_text, hrefs);
+    const response = await fetch(`https://r.jina.ai/${url}`);
+    const markdown = await response.text();
+    // console.log("markdown events", markdown);
+    const hrefs = await this.getHrefs(url);
+    const events = await this.find_events(markdown, hrefs);
     console.log("events.length", events.length);
     console.log("events", events);
-    // TODO create a custom assert method close connection, break and log error
-    if (!events.length) {
-      this.closePage(page_key, `No events found for ${url}`);
+
+    if (events.length === 0) {
+      console.log("no events found for:", url);
       return;
     }
 
     const db = new DatabaseService();
-    const seen_exhibitions = await db.get_seen_exhibitions();
+    const seen_exhibitions = await db.get_seen_exhibitions(); // this.db
 
     console.log("seen exhibitions", seen_exhibitions.length);
 
     await Promise.all(
       events.map(async (event) => {
+        // filter events instead of this
         const { should_skip, reason } = await this.blockEvent(
           event,
           seen_exhibitions,
@@ -518,96 +512,38 @@ export class EventScraper {
           return;
         }
 
-        const page_key = event.url;
-
         console.log("visiting event details page", event.url);
 
-        await this.visitWebsite(event.url);
+        const response = await fetch(`https://r.jina.ai/${event.url}`);
+        const markdown = await response.text();
 
-        const source_of_truth = await this.getInnerText(page_key);
+        console.log("markdown", markdown);
 
-        if (!source_of_truth) {
-          await this.closePage(
-            page_key,
-            `no source of truth found ${event.url}`,
-          );
-          return;
-        }
-
-        console.log("source_of_truth", source_of_truth);
-        let details = await this.extract_details(source_of_truth);
-        // const private_view = await this.extract_private_view(source_of_truth);
+        const details = await this.extract_details(markdown);
 
         if (!details) {
-          await this.closePage(page_key, `no details found ${event.url}`);
+          await this.closePage(event.url, `no details found ${event.url}`);
           return;
         }
-
-        // console.log(`private viewings haha ${details.exhibition_name}`, {
-        //   private_view_start_date_old: details.private_view_start_date,
-        //   private_view_end_date_old: details.private_view_end_date,
-        //   private_view_start_date_new: private_view?.private_view_start_date,
-        //   private_view_end_date_new: private_view?.private_view_end_date,
-        // });
-
-        // details.private_view_start_date =
-        //   private_view?.private_view_start_date ?? null;
-        // details.private_view_end_date =
-        //   private_view?.private_view_end_date ?? null;
-
-        // details.exhibition_name = event.name;
-
-        // if (this.hasEventEnded(details.end_date)) {
-        //   await this.closePage(
-        //     page_key,
-        //     `event already ended. name: ${event.name} / url: ${event.url}`,
-        //   );
-        //   return;
-        // }
-
-        // const feedback = await this.provide_feedback(details, source_of_truth);
-
-        // if (feedback?.has_feedback) {
-        //   console.log("feedback", feedback);
-
-        //   details = await this.action_feedback({
-        //     feedback,
-        //     original_record: details,
-        //     source_of_truth,
-        //   });
-        // }
 
         // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
         if (this.hasEventEnded(details.end_date)) {
-          await this.closePage(
-            page_key,
-            `event already ended. name: ${event.name} / url: ${event.url}`,
-          );
           return;
         }
 
         if (!details.exhibition_name) {
-          await this.closePage(
-            page_key,
-            `no exhibition name found. name: ${event.name} / url: ${event.url}`,
-          );
           return;
         }
 
-        const images = await this.extractImages(page_key, event.name);
-        details.image_urls = images;
+        // const images = await this.extractImages(event.url, event.name);
+        // details.image_urls = images;
 
         await this.insertDbRecord(details, event.url, gallery_id);
         await this.insert_seen_exhibition(event.name, gallery_id);
-
-        await this.closePage(page_key, `inserted record, done`);
       }),
     );
 
-    await this.closePage(page_key, `scraping done`);
-
-    this.browser?.close();
     console.timeEnd("scraping time");
 
     return events;

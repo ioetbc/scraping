@@ -44,16 +44,17 @@ export const extract_event_details_prompt = ({
 
     A private viewing can be labeled with terms such as:
 
-    "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" "Preview" or any similar phrase.
+    "Private View" "PV" "Opening Night", "Opening Reception", "opening reception", "Opening Party", "First View", "First Viewing", "Launch Night", "Launch Party", "Launch Event", "Drinks Reception", "Reception", "Preview" or any similar phrase.
 
     Extract Dates: If a private viewing exists, extract two pieces of information:
 
-    private_view_start_date (in ISO 8601 format with time)
-    private_view_end_date (in ISO 8601 format with time)
+    1. private_view_start_date (in ISO 8601 format with time)
+    2. private_view_end_date (in ISO 8601 format with time)
 
     Do not use the general event start_date or end_date as the private viewing times. Only rely on what is explicitly stated for the private view.
 
     It is parammount that you extract the exact time for the private view. Double check that the time is accurate and that it is in the correct format.
+
 
     <example_1>
       If the Source of Truth says:
@@ -110,6 +111,22 @@ export const extract_event_details_prompt = ({
   <info>
     Put yourself in the shoes of a potential attendee of the event. Extract only information from the "Source of truth" which describe the event in full detail. Do not cherry pick sentences from paragraphs, provide the full text but do not include useless information. Remember you must only use the "Source of truth" and not fabricate or make up any texts.
   </info>
+
+  <image_urls>
+    Carefully select the most likely images that you think correspond to the event.
+
+    Disregard any logos, images that are not relevant to the event, or images that are not in a suitable format.
+
+    Disregard image formats that are not a jpg, jpeg, png, webp or similar.
+
+    Disregard .svg and base64 image formats in your response.
+
+    Important image_url information:
+    1. Pick a maximum of 5 images
+    2. The images should be high resolution and of good quality.
+    3. The images should be in a suitable format for web use
+    4. The images should be able to render within an html <img> tag.
+  </image_urls>
 
   Important:
   1. All properties in the schema are nullable. If you're unable to accurately extract a property from the "Source of truth," then set this property to null.
