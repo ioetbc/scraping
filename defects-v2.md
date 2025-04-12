@@ -10,24 +10,41 @@ I wonder if this would be more accurate if you had an LLM per property
 [x] The Moving Eye Cannot See https://sidmotiongallery.co.uk/exhibition/the-moving-eye-cannot-see/ private view timings are incorrect
 [x] Second Skin https://sidmotiongallery.co.uk/exhibition/second-skin/ did not pick up the private view timings
 
-
 ## incorrect featured artists
+
 [x] multiples of the same artist make them unique in the prompt https://www.richardsaltoun.com/exhibitions/140-anna-perach-a-leap-of-sympathy
 [x] An Ominous Presence https://www.softopening.london/exhibitions/an-ominous-presence has the exhibition name as a featured artist
 [x] $ID3FA££ $YNDR0M3 https://www.roseeaston.com/exhibitions/sidefall-syndrome Rose easton is one of the artists featured in the exhibition (gallery name should not be specified)
 
 ## Too many events collected (most of which are finished)
+
 [x] https://www.roseeaston.com/exhibitions collects way too many events at the start, only collect events that are currently happening or fourthcoming
 
 ## Hangs forever
+
 [] Whitechapel Gallery hangs forever after scraping
 
 ## Event already ended
+
 [x] https://www.soupldn.com/eleni-papazoglou event ends tomorrow but has been blocked
-[] softopening ominous presents was not collected cause it extracted the wrong end date and thought it had ended
-[] same with The Moving Eye Cannot See old did not collect it from sid motion gallery
+[x] softopening ominous presents was not collected cause it extracted the wrong end date and thought it had ended
+[x] same with The Moving Eye Cannot See old did not collect it from sid motion gallery
 
 ## Private viewings
-[] https://www.richardsaltoun.com/exhibitions/140-anna-perach-a-leap-of-sympathy/ 18:30 - 20:30 but scraped as 18:00 - 20:00
 
-[] Animula https://xxijrahii.net/frieze-london-2024/ No idea why this is collected
+[x] https://www.richardsaltoun.com/exhibitions/140-anna-perach-a-leap-of-sympathy/ 18:30 - 20:30 but scraped as 18:00 - 20:00
+[x] Animula https://xxijrahii.net/frieze-london-2024/ No idea why this is collected
+
+## V3
+
+[] https://alisonjacques.com/exhibitions/maeve-gilmore exhibition name is wrong (might need to change the prompt to if use artist name if there is no explicitly set exhibition name, like in this case)
+[] Aesthetic Amoralism https://www.aliceblackgallery.com/forthcoming-exhibitions/t83lfb3adywsqw0ooc6krpbvd248vh not enough info to obtain featured artists so has set to gallery name
+[] Same here Figure in an Interior II this is the name of the painting I think the exhibition is the artists name https://www.theapproach.co.uk/exhibitions/jai-chuhan
+
+## Private view
+
+[] Silent Running https://www.aliceamati.com/nicholas-marschner-solo-exhibition (no private view found)
+tbf doesnt show it on the event details page yet, just in their stupid gif
+[] Shizen https://www.alminerech.com/exhibitions/11024-lou-zhenggang-shizen (did not get Opening on Tuesday, April 22, 2025 from 6 to 8 pm)
+[] Art Fictions Anthology 1 https://ascstudios.co.uk/events/art-fictions-anthology1-asc-gallery-2/ I think this was 2024 not 25 Marsuppium https://ascstudios.co.uk/events/marsuppium-asc-gallery/ same for this one
+[]

@@ -53,7 +53,7 @@ export class EventScraper {
 
   launchBrowser = async () => {
     this.browser = await launch({
-      headless: true,
+      headless: false,
       args: ["--no-sandbox", "--disable-gpu"],
     });
   };
@@ -131,8 +131,6 @@ export class EventScraper {
       console.log("no text passed to findEvents");
       return [];
     }
-
-    console.log("hrefs", hrefs);
 
     const {system_prompt, user_prompt} = find_events_prompt({
       source_of_truth: this.truncatePrompt(text),
@@ -530,9 +528,11 @@ export class EventScraper {
   };
 
   closePage = async (key: string, reason?: string) => {
-    const page = this.getPage(key);
+    // const page = this.getPage(key);
+    const page = this.pages.get(key);
     if (page) {
       try {
+        console.log("closing page for", page);
         await page.close();
       } catch (error) {
         console.log("error closing page:", error);
@@ -560,19 +560,21 @@ export class EventScraper {
       return false;
     }
 
-    console.log("eventEndDate", eventEndDate);
-    console.log("now", now);
-
     return !isAfter(eventEndDate, now);
   };
 
   async handler(url: string, gallery_id: string) {
-    console.log("launching browser");
-    await this.launchBrowser();
+    console.log("number of this.pages open:", this.pages.size);
+    const pages = await this.browser?.pages();
+    console.log("number of browser pages open:", pages?.length);
+
+    if (!this.browser) {
+      console.log("launching browser");
+      await this.launchBrowser();
+    }
+
     console.time("scraping time");
     console.log("scraping url", url);
-
-    console.log("current_date", this.current_date);
 
     if (!this.browser) {
       console.log("no browser found");
@@ -596,8 +598,6 @@ export class EventScraper {
     console.log("getting hrefs");
     const hrefs = await this.getHrefs(page_key);
     console.log("getting events");
-    console.log("page_text", page_text);
-    console.log("hrefs", hrefs);
     const events = await this.find_events(page_text, hrefs);
 
     console.log("events.length", events.length);
@@ -605,6 +605,7 @@ export class EventScraper {
 
     if (events.length === 0) {
       console.log("no events found for:", url);
+      await this.closePage(page_key, "No events found");
       return;
     }
 
@@ -622,7 +623,6 @@ export class EventScraper {
         );
 
         if (should_skip) {
-          console.log("skipping event:", event.name, "reason:", reason);
           return;
         }
 
@@ -633,7 +633,10 @@ export class EventScraper {
         const markdown = await this.getInnerText(event.event_page_url);
 
         if (!markdown) {
-          console.log("no markdown found for", event.event_page_url);
+          await this.closePage(
+            event.event_page_url,
+            "No markdown found for event details page"
+          );
           return;
         }
 
@@ -641,8 +644,6 @@ export class EventScraper {
         //   `https://r.jina.ai/${event.event_page_url}`
         // );
         // const markdown = await response.text();
-
-        console.log("markdown", markdown);
 
         const private_view = await this.extract_private_view(markdown);
         const start_and_end_date = await this.extract_start_end_date(markdown);
@@ -656,7 +657,7 @@ export class EventScraper {
 
         if (this.hasEventEnded(start_and_end_date?.end_date ?? null)) {
           await this.closePage(
-            page_key,
+            event.event_page_url,
             `Blocking: event has ended ${event.name}`
           );
           return;
@@ -664,7 +665,7 @@ export class EventScraper {
 
         if (!exhibition_name?.exhibition_name) {
           await this.closePage(
-            page_key,
+            event.event_page_url,
             `Blocking: no exhibition name found ${event.name}`
           );
           return;
@@ -690,10 +691,9 @@ export class EventScraper {
           gallery_id,
         };
 
-        console.log("payload init", payload);
-
         await db.insert_exhibition(payload);
         await this.insert_seen_exhibition(event.name, gallery_id);
+        await this.closePage(event.event_page_url, "Done");
       })
     );
 
