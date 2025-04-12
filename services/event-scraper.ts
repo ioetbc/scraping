@@ -1,8 +1,8 @@
-import { Browser, launch, Page } from "puppeteer";
-import { GALLERY_URL } from "../const.js";
-import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
-import { format, isAfter } from "date-fns";
+import {Browser, launch, Page} from "puppeteer";
+import {GALLERY_URL} from "../const.js";
+import {generateObject} from "ai";
+import {openai} from "@ai-sdk/openai";
+import {format, isAfter} from "date-fns";
 
 // TODO export object from main schema file to avoid multiple imports from different places same for the prompts
 import {
@@ -15,13 +15,13 @@ import {
   is_ticketed_schema,
   mega_schema,
   private_view_schema,
-  start_and_end_date_schema,
+  start_date_end_date_schema,
 } from "../zod/event-details-schema.js";
-import { event_map_schema } from "../zod/event-map-schema.js";
-import { event_image_schema } from "../zod/event-image-schema.js";
+import {event_map_schema} from "../zod/event-map-schema.js";
+import {event_image_schema} from "../zod/event-image-schema.js";
 
-import { provide_feedback_prompt } from "../prompts/provide-feedback-prompt.js";
-import { find_events_prompt } from "../prompts/find-events-prompt.js";
+import {provide_feedback_prompt} from "../prompts/provide-feedback-prompt.js";
+import {find_events_prompt} from "../prompts/find-events-prompt.js";
 import {
   details_prompt,
   exhibition_name_prompt,
@@ -32,11 +32,11 @@ import {
   start_and_end_date_prompt,
 } from "../prompts/extract-event-details-prompt.js";
 
-import { DatabaseService } from "./database.js";
-import { z } from "zod";
+import {DatabaseService} from "./database.js";
+import {z} from "zod";
 
-import { encoding_for_model } from "tiktoken";
-import { HonoBase } from "hono/hono-base";
+import {encoding_for_model} from "tiktoken";
+import {HonoBase} from "hono/hono-base";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
@@ -84,7 +84,7 @@ export class EventScraper {
     if (!page) {
       await this.closePage(
         key,
-        `no page found whilst getting inner text ${key}`,
+        `no page found whilst getting inner text ${key}`
       );
       return undefined;
     }
@@ -101,7 +101,7 @@ export class EventScraper {
     }
 
     const hrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a")).map((a) => a.href),
+      Array.from(document.querySelectorAll("a")).map((a) => a.href)
     );
 
     return hrefs ?? [];
@@ -125,14 +125,16 @@ export class EventScraper {
 
   async find_events(
     text: string | undefined,
-    hrefs: string[],
+    hrefs: string[]
   ): Promise<Event[]> {
     if (!text) {
       console.log("no text passed to findEvents");
       return [];
     }
 
-    const { system_prompt, user_prompt } = find_events_prompt({
+    console.log("hrefs", hrefs);
+
+    const {system_prompt, user_prompt} = find_events_prompt({
       source_of_truth: this.truncatePrompt(text),
       hrefs,
       current_date: this.current_date,
@@ -159,7 +161,7 @@ export class EventScraper {
   }
 
   extract_private_view = async (page_text: string) => {
-    const { system_prompt, user_prompt } = extract_private_view_prompt({
+    const {system_prompt, user_prompt} = extract_private_view_prompt({
       markdown: page_text,
     });
 
@@ -177,8 +179,8 @@ export class EventScraper {
     }
   };
 
-  extract_start_and_end_date = async (page_text: string) => {
-    const { system_prompt, user_prompt } = start_and_end_date_prompt({
+  extract_start_end_date = async (page_text: string) => {
+    const {system_prompt, user_prompt} = start_and_end_date_prompt({
       markdown: page_text,
     });
 
@@ -187,7 +189,7 @@ export class EventScraper {
         model: openai("gpt-4o-mini"),
         system: system_prompt,
         prompt: user_prompt,
-        schema: start_and_end_date_schema,
+        schema: start_date_end_date_schema,
       });
 
       return data.object;
@@ -198,7 +200,7 @@ export class EventScraper {
   };
 
   extract_exhibition_name = async (page_text: string) => {
-    const { system_prompt, user_prompt } = exhibition_name_prompt({
+    const {system_prompt, user_prompt} = exhibition_name_prompt({
       markdown: page_text,
     });
 
@@ -218,7 +220,7 @@ export class EventScraper {
   };
 
   extract_featured_artists = async (page_text: string) => {
-    const { system_prompt, user_prompt } = featured_artists_prompt({
+    const {system_prompt, user_prompt} = featured_artists_prompt({
       markdown: page_text,
     });
 
@@ -237,7 +239,7 @@ export class EventScraper {
   };
 
   extract_details = async (page_text: string) => {
-    const { system_prompt, user_prompt } = details_prompt({
+    const {system_prompt, user_prompt} = details_prompt({
       markdown: page_text,
     });
 
@@ -256,7 +258,7 @@ export class EventScraper {
   };
 
   extract_image_urls = async (page_text: string) => {
-    const { system_prompt, user_prompt } = image_url_prompt({
+    const {system_prompt, user_prompt} = image_url_prompt({
       markdown: page_text,
     });
 
@@ -275,7 +277,7 @@ export class EventScraper {
   };
 
   extract_is_ticketed = async (page_text: string) => {
-    const { system_prompt, user_prompt } = is_ticketed_prompt({
+    const {system_prompt, user_prompt} = is_ticketed_prompt({
       markdown: page_text,
     });
 
@@ -314,7 +316,7 @@ export class EventScraper {
 
   extractImages = async (
     key: string,
-    event_name: string,
+    event_name: string
   ): Promise<string[]> => {
     const page = this.getPage(key);
 
@@ -324,9 +326,7 @@ export class EventScraper {
     }
 
     const imageElements = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("img")).map(
-        (element) => element.src,
-      ),
+      Array.from(document.querySelectorAll("img")).map((element) => element.src)
     );
 
     const jpgs =
@@ -357,7 +357,7 @@ export class EventScraper {
 
   provide_feedback = async (
     record: z.infer<typeof event_details_schema>,
-    source_of_truth: string | undefined,
+    source_of_truth: string | undefined
   ) => {
     if (!source_of_truth) {
       console.log("no text passed to provide_feedback");
@@ -367,7 +367,7 @@ export class EventScraper {
     console.log("calling provide_feedback with record:", !!record);
     console.log("calling provide_feedback with text:", !!source_of_truth);
 
-    const { system_prompt, user_prompt } = provide_feedback_prompt({
+    const {system_prompt, user_prompt} = provide_feedback_prompt({
       record,
       source_of_truth,
     });
@@ -383,7 +383,7 @@ export class EventScraper {
       return {
         ...data.object,
         has_feedback: Object.values(data.object).some(
-          (predicate) => predicate !== null,
+          (predicate) => predicate !== null
         ),
       };
     } catch (error) {
@@ -456,7 +456,7 @@ export class EventScraper {
   insertDbRecord = async (
     record: z.infer<typeof mega_schema>,
     url: string,
-    gallery_id: string,
+    gallery_id: string
   ) => {
     const db = new DatabaseService();
 
@@ -470,10 +470,10 @@ export class EventScraper {
       start_date: this.convertDate(record?.start_date),
       end_date: this.convertDate(record?.end_date),
       private_view_start_date: this.convertDate(
-        record.private_view_start_date ?? null,
+        record.private_view_start_date ?? null
       ),
       private_view_end_date: this.convertDate(
-        record.private_view_end_date ?? null,
+        record.private_view_end_date ?? null
       ),
       gallery_id,
     });
@@ -481,7 +481,7 @@ export class EventScraper {
 
   insert_seen_exhibition = async (
     exhibition_name: string,
-    gallery_id: string,
+    gallery_id: string
   ) => {
     const db = new DatabaseService();
     await db.insert_seen_exhibition(exhibition_name, gallery_id);
@@ -493,8 +493,8 @@ export class EventScraper {
 
   blockEvent = async (
     event: Event,
-    seen_exhibitions: string[],
-  ): Promise<{ should_skip: boolean; reason?: string }> => {
+    seen_exhibitions: string[]
+  ): Promise<{should_skip: boolean; reason?: string}> => {
     if (!event.name) {
       return {
         should_skip: true,
@@ -579,12 +579,27 @@ export class EventScraper {
       return;
     }
 
-    const response = await fetch(`https://r.jina.ai/${url}`);
-    const markdown = await response.text();
+    // const response = await fetch(`https://r.jina.ai/${url}`);
+    // const markdown = await response.text();
 
     // console.log("markdown events", markdown);
-    const hrefs = await this.getHrefs(url);
-    const events = await this.find_events(markdown, hrefs);
+    // const hrefs = await this.getHrefs(url);
+    // const events = await this.find_events(markdown, hrefs);
+    //
+    //
+    const page_key = url;
+
+    await this.visitWebsite(url);
+
+    console.log("getting page text");
+    const page_text = await this.getInnerText(page_key);
+    console.log("getting hrefs");
+    const hrefs = await this.getHrefs(page_key);
+    console.log("getting events");
+    console.log("page_text", page_text);
+    console.log("hrefs", hrefs);
+    const events = await this.find_events(page_text, hrefs);
+
     console.log("events.length", events.length);
     console.log("events", events);
 
@@ -601,9 +616,9 @@ export class EventScraper {
     await Promise.all(
       events.map(async (event) => {
         // filter events instead of this
-        const { should_skip, reason } = await this.blockEvent(
+        const {should_skip, reason} = await this.blockEvent(
           event,
-          seen_exhibitions,
+          seen_exhibitions
         );
 
         if (should_skip) {
@@ -611,38 +626,66 @@ export class EventScraper {
           return;
         }
 
-        console.log("visiting event details page", event.url);
+        console.log("visiting event details page", event.event_page_url);
 
-        const response = await fetch(`https://r.jina.ai/${event.url}`);
-        const markdown = await response.text();
+        await this.visitWebsite(event.event_page_url);
+
+        const markdown = await this.getInnerText(event.event_page_url);
+
+        if (!markdown) {
+          console.log("no markdown found for", event.event_page_url);
+          return;
+        }
+
+        // const response = await fetch(
+        //   `https://r.jina.ai/${event.event_page_url}`
+        // );
+        // const markdown = await response.text();
 
         console.log("markdown", markdown);
 
         const private_view = await this.extract_private_view(markdown);
-        const start_and_end_date =
-          await this.extract_start_and_end_date(markdown);
+        const start_and_end_date = await this.extract_start_end_date(markdown);
         const featured_artists = await this.extract_featured_artists(markdown);
         const exhibition_name = await this.extract_exhibition_name(markdown);
         const image_urls = await this.extract_image_urls(markdown);
         const details = await this.extract_details(markdown);
         const is_ticketed = await this.extract_is_ticketed(markdown);
 
+        // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
+
+        if (this.hasEventEnded(start_and_end_date?.end_date ?? null)) {
+          await this.closePage(
+            page_key,
+            `Blocking: event has ended ${event.name}`
+          );
+          return;
+        }
+
+        if (!exhibition_name?.exhibition_name) {
+          await this.closePage(
+            page_key,
+            `Blocking: no exhibition name found ${event.name}`
+          );
+          return;
+        }
+
         const payload = {
           exhibition_name: exhibition_name?.exhibition_name ?? null,
           info: details?.details ?? null,
           featured_artists: JSON.stringify(
-            featured_artists?.featured_artists ?? [],
+            featured_artists?.featured_artists ?? []
           ),
-          exhibition_page_url: url,
+          exhibition_page_url: event.event_page_url,
           image_urls: JSON.stringify(image_urls ?? []),
           is_ticketed: !!is_ticketed?.is_ticketed,
           start_date: this.convertDate(start_and_end_date?.start_date ?? null),
           end_date: this.convertDate(start_and_end_date?.end_date ?? null),
           private_view_start_date: this.convertDate(
-            private_view?.private_view_start_date ?? null,
+            private_view?.private_view_start_date ?? null
           ),
           private_view_end_date: this.convertDate(
-            private_view?.private_view_end_date ?? null,
+            private_view?.private_view_end_date ?? null
           ),
           gallery_id,
         };
@@ -650,32 +693,12 @@ export class EventScraper {
         console.log("payload init", payload);
 
         await db.insert_exhibition(payload);
-
         await this.insert_seen_exhibition(event.name, gallery_id);
-
-        // const details = await this.extract_details(markdown);
-
-        // if (!details) {
-        //   await this.closePage(event.url, `no details found ${event.url}`);
-        //   return;
-        // }
-
-        // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
-
-        // if (this.hasEventEnded(details.end_date)) {
-        //   return;
-        // }
-
-        // if (!details.exhibition_name) {
-        //   return;
-        // }
-
-        // const images = await this.extractImages(event.url, event.name);
-        // details.image_urls = images;
-      }),
+      })
     );
 
     console.timeEnd("scraping time");
+    await this.closePage(page_key, "Done");
 
     return events;
   }

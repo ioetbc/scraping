@@ -6,14 +6,10 @@ import {
   image_url_schema,
   is_ticketed_schema,
   private_view_schema,
-  start_and_end_date_schema,
+  start_date_end_date_schema,
 } from "../zod/event-details-schema.js";
 
-export const start_and_end_date_prompt = ({
-  markdown,
-}: {
-  markdown: string;
-}) => ({
+export const start_and_end_date_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event start dates and end dates.
 
   <inputs>
@@ -21,34 +17,42 @@ export const start_and_end_date_prompt = ({
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
-  Look for phrases like "12 Apr – 24 May 2025".
   Convert extracted dates to ISO 8601 format.
 
-  <example>
+  <example_1>
     If the Source of Truth states:
     "15 May—24 June 2025"
 
     You should respond with:
     start_date: "2025-05-15"
     end_date:   "2025-06-24"
-  </example>
+  </example_1>
 
+  <example_2>
+    If the Source of Truth states:
+    "14.03 - 10.05.2025"
+
+    You should respond with:
+    start_date: "2025-03-14"
+    end_date:   "2025-05-10"
+  </example_2>
   <important>
     1. If you are unable to extract a start date, set it to null.
     2. If you are unable to extract an end date, set it to null.
     3. If you are only able to extract a start date and the end date is not present in the "Source of truth", set the end date to the start date.
     4. Convert all dates to ISO 8601 format. For example, September 27, 2025 is represented as 2025-09-27.
     5. If you are unable to accurately infer the year of the event, you can assume the current year. For example if the event states 12th Jan - 15th Feb. You can assume it is referring to the current year.
+    6. All dates in these instructions are for demonstration purposes. Do not use them in your response. Use the "Source of truth" to extract the correct dates for the given event.
   </important>
 
 `,
   user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${start_and_end_date_schema.shape}
+    "Schema": ${start_date_end_date_schema.shape}
   `,
 });
 
-export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
+export const exhibition_name_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   You are provided with two inputs:
@@ -71,11 +75,7 @@ export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
   `,
 });
 
-export const featured_artists_prompt = ({
-  markdown,
-}: {
-  markdown: string;
-}) => ({
+export const featured_artists_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   <inputs>
@@ -98,7 +98,7 @@ export const featured_artists_prompt = ({
   `,
 });
 
-export const details_prompt = ({ markdown }: { markdown: string }) => ({
+export const details_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   <inputs>
@@ -123,7 +123,7 @@ export const details_prompt = ({ markdown }: { markdown: string }) => ({
   `,
 });
 
-export const image_url_prompt = ({ markdown }: { markdown: string }) => ({
+export const image_url_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   <inputs>
@@ -218,7 +218,7 @@ export const extract_private_view_prompt = ({
   `,
 });
 
-export const is_ticketed_prompt = ({ markdown }: { markdown: string }) => ({
+export const is_ticketed_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
 
   <inputs>

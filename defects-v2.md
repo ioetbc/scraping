@@ -24,6 +24,8 @@ I wonder if this would be more accurate if you had an LLM per property
 
 ## Event already ended
 [x] https://www.soupldn.com/eleni-papazoglou event ends tomorrow but has been blocked
+[] softopening ominous presents was not collected cause it extracted the wrong end date and thought it had ended
+[] same with The Moving Eye Cannot See old did not collect it from sid motion gallery
 
 ## Private viewings
 [] https://www.richardsaltoun.com/exhibitions/140-anna-perach-a-leap-of-sympathy/ 18:30 - 20:30 but scraped as 18:00 - 20:00

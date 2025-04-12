@@ -1,4 +1,4 @@
-import { z } from "zod";
+import {z} from "zod";
 
 // TODO: Add Online or inperson enum https://www.workplace.art/exhibitions/focus-amy-winstanley (Online)
 //
@@ -26,7 +26,7 @@ export const private_view_schema = z.object({
     .nullable(),
 });
 
-export const start_and_end_date_schema = z.object({
+export const start_date_end_date_schema = z.object({
   start_date: z.string().describe("the date the event begins").nullable(),
   end_date: z.string().describe("the date the event ends").nullable(),
 });
@@ -84,7 +84,7 @@ export const mega_schema = featured_artist_schema
   .merge(image_url_schema)
   .merge(is_ticketed_schema)
   .merge(private_view_schema)
-  .merge(start_and_end_date_schema)
+  .merge(start_date_end_date_schema)
   .merge(exhibition_name_schema);
 
 export const event_details_schema = z.object({
