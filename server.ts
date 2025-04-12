@@ -18,13 +18,13 @@ app.get("/event-scraper", async (context) => {
 
   const done = [];
 
-  for (const gallery of single) {
+  for (const gallery of from) {
     if (gallery.name === "Cardi Gallery") continue;
 
     await scraper.handler(gallery.exhibition_page_url, gallery.id);
 
     done.push(gallery.id);
-    console.log(`done ${done.length} / ${single.length}`);
+    console.log(`done ${done.length} / ${from.length}`);
   }
 
   // return context.text("Done");
