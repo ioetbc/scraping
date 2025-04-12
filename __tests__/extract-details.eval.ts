@@ -4,7 +4,7 @@ import { evalite } from "evalite";
 import { EventScraper } from "../services/event-scraper.js";
 
 import dotenv from "dotenv";
-import { extract_event_details_prompt } from "../prompts/extract-event-details-prompt.js";
+import { extract_private_view_prompt } from "../prompts/extract-event-details-prompt.js";
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ const a_leap_of_sympathy = `
   For press enquiries, please email: [sonja@richardsaltoun.com](mailto:%20sonja@richardsaltoun.com)
 `;
 
-const { user_prompt } = extract_event_details_prompt({
+const { user_prompt } = extract_private_view_prompt({
   page_text: a_leap_of_sympathy,
 });
 

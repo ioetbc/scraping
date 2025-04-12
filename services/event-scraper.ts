@@ -6,21 +6,37 @@ import { format, isAfter } from "date-fns";
 
 // TODO export object from main schema file to avoid multiple imports from different places same for the prompts
 import {
+  details_schema,
   event_details_schema,
+  exhibition_name_schema,
+  featured_artist_schema,
   feedback_schema,
+  image_url_schema,
+  is_ticketed_schema,
+  mega_schema,
   private_view_schema,
+  start_and_end_date_schema,
 } from "../zod/event-details-schema.js";
 import { event_map_schema } from "../zod/event-map-schema.js";
 import { event_image_schema } from "../zod/event-image-schema.js";
 
 import { provide_feedback_prompt } from "../prompts/provide-feedback-prompt.js";
 import { find_events_prompt } from "../prompts/find-events-prompt.js";
-import { extract_event_details_prompt } from "../prompts/extract-event-details-prompt.js";
+import {
+  details_prompt,
+  exhibition_name_prompt,
+  extract_private_view_prompt,
+  featured_artists_prompt,
+  image_url_prompt,
+  is_ticketed_prompt,
+  start_and_end_date_prompt,
+} from "../prompts/extract-event-details-prompt.js";
 
 import { DatabaseService } from "./database.js";
 import { z } from "zod";
 
 import { encoding_for_model } from "tiktoken";
+import { HonoBase } from "hono/hono-base";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
@@ -142,9 +158,9 @@ export class EventScraper {
     }
   }
 
-  extract_details = async (page_text: string) => {
-    const { system_prompt, user_prompt } = extract_event_details_prompt({
-      page_text,
+  extract_private_view = async (page_text: string) => {
+    const { system_prompt, user_prompt } = extract_private_view_prompt({
+      markdown: page_text,
     });
 
     try {
@@ -152,58 +168,6 @@ export class EventScraper {
         model: openai("gpt-4o-mini"),
         system: system_prompt,
         prompt: user_prompt,
-        schema: event_details_schema,
-      });
-
-      return data.object;
-    } catch (error) {
-      console.log("Error extracting data:", error);
-    }
-  };
-
-  extract_private_view = async (page_text: string) => {
-    try {
-      const data = await generateObject({
-        model: openai("gpt-4o-mini"),
-        system: `
-        You are a diligent lead researcher tasked with collecting information about private viewings from a single input:
-
-        Source of Truth: A block of text from a webpage that accurately describes the event.
-
-        Your Objective:
-
-        Identify a Private Viewing: Check if the source text indicates a private viewing.
-
-        A private viewing can be labeled with terms such as:
-
-        "Private View" "PV" "Opening Night" "Opening Reception" "Opening Party" "First View" "First Viewing" "Launch Night" "Launch Party" "Launch Event" "Drinks Reception" "Reception" "Preview" or any similar phrase.
-
-        Extract Dates: If a private viewing exists, extract two pieces of information:
-
-        private_view_start_date (in ISO 8601 format with time)
-        private_view_end_date (in ISO 8601 format with time)
-
-        Do not use any general event start_date or end_date as the private viewing times. Only rely on what is explicitly stated for the private view.
-
-        Example:
-        If the Source of Truth says:
-
-        "Opening reception:
-        10 April 18:00 - 20:00"
-
-        You should respond with:
-        private_view_start_date: "2023-04-10T18:00:00.000Z"
-        private_view_end_date:   "2023-04-10T20:00:00.000Z"
-
-        Important:
-
-        1. If a private view is identified, return the private_view_start_date and private_view_end_date in ISO 8601 format with time.
-        2. If you find no private view, do not fabricate any dates. Return null.
-        3. Use ISO 8601 for all returned dates and times.
-        4. No Fabrication: Only use date/time details found in the Source of Truth.
-        5. Ignore Example Values: Any dates/times shown in these instructions are for demonstration only. Do not reference them directly in your answer.
-        `,
-        prompt: `Source of Truth: ${page_text}`,
         schema: private_view_schema,
       });
 
@@ -212,6 +176,141 @@ export class EventScraper {
       console.log("Error extracting data:", error);
     }
   };
+
+  extract_start_and_end_date = async (page_text: string) => {
+    const { system_prompt, user_prompt } = start_and_end_date_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: start_and_end_date_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+      return null;
+    }
+  };
+
+  extract_exhibition_name = async (page_text: string) => {
+    const { system_prompt, user_prompt } = exhibition_name_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: exhibition_name_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+      return null;
+    }
+  };
+
+  extract_featured_artists = async (page_text: string) => {
+    const { system_prompt, user_prompt } = featured_artists_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: featured_artist_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+    }
+  };
+
+  extract_details = async (page_text: string) => {
+    const { system_prompt, user_prompt } = details_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: details_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+    }
+  };
+
+  extract_image_urls = async (page_text: string) => {
+    const { system_prompt, user_prompt } = image_url_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: image_url_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+    }
+  };
+
+  extract_is_ticketed = async (page_text: string) => {
+    const { system_prompt, user_prompt } = is_ticketed_prompt({
+      markdown: page_text,
+    });
+
+    try {
+      const data = await generateObject({
+        model: openai("gpt-4o-mini"),
+        system: system_prompt,
+        prompt: user_prompt,
+        schema: is_ticketed_schema,
+      });
+
+      return data.object;
+    } catch (error) {
+      console.log("Error extracting data:", error);
+    }
+  };
+
+  // extract_details = async (page_text: string) => {
+  //   const { system_prompt, user_prompt } = extract_private_view_prompt({
+  //     page_text,
+  //   });
+
+  //   try {
+  //     const data = await generateObject({
+  //       model: openai("gpt-4o-mini"),
+  //       system: system_prompt,
+  //       prompt: user_prompt,
+  //       schema: event_details_schema,
+  //     });
+
+  //     return data.object;
+  //   } catch (error) {
+  //     console.log("Error extracting data:", error);
+  //   }
+  // };
 
   extractImages = async (
     key: string,
@@ -355,7 +454,7 @@ export class EventScraper {
   };
 
   insertDbRecord = async (
-    record: z.infer<typeof event_details_schema>,
+    record: z.infer<typeof mega_schema>,
     url: string,
     gallery_id: string,
   ) => {
@@ -363,11 +462,10 @@ export class EventScraper {
 
     await db.insert_exhibition({
       exhibition_name: record.exhibition_name,
-      info: record.info,
+      info: record.details,
       featured_artists: JSON.stringify(record.featured_artists),
       exhibition_page_url: url,
-      image_urls: JSON.stringify(record.image_urls),
-      // schedule: JSON.stringify(record.schedule),
+      image_urls: JSON.stringify(record.urls),
       is_ticketed: !!record.is_ticketed,
       start_date: this.convertDate(record?.start_date),
       end_date: this.convertDate(record?.end_date),
@@ -483,6 +581,7 @@ export class EventScraper {
 
     const response = await fetch(`https://r.jina.ai/${url}`);
     const markdown = await response.text();
+
     // console.log("markdown events", markdown);
     const hrefs = await this.getHrefs(url);
     const events = await this.find_events(markdown, hrefs);
@@ -519,28 +618,60 @@ export class EventScraper {
 
         console.log("markdown", markdown);
 
+        const private_view = await this.extract_private_view(markdown);
+        const start_and_end_date =
+          await this.extract_start_and_end_date(markdown);
+        const featured_artists = await this.extract_featured_artists(markdown);
+        const exhibition_name = await this.extract_exhibition_name(markdown);
+        const image_urls = await this.extract_image_urls(markdown);
         const details = await this.extract_details(markdown);
+        const is_ticketed = await this.extract_is_ticketed(markdown);
 
-        if (!details) {
-          await this.closePage(event.url, `no details found ${event.url}`);
-          return;
-        }
+        const payload = {
+          exhibition_name: exhibition_name?.exhibition_name ?? null,
+          info: details?.details ?? null,
+          featured_artists: JSON.stringify(
+            featured_artists?.featured_artists ?? [],
+          ),
+          exhibition_page_url: url,
+          image_urls: JSON.stringify(image_urls ?? []),
+          is_ticketed: !!is_ticketed?.is_ticketed,
+          start_date: this.convertDate(start_and_end_date?.start_date ?? null),
+          end_date: this.convertDate(start_and_end_date?.end_date ?? null),
+          private_view_start_date: this.convertDate(
+            private_view?.private_view_start_date ?? null,
+          ),
+          private_view_end_date: this.convertDate(
+            private_view?.private_view_end_date ?? null,
+          ),
+          gallery_id,
+        };
+
+        console.log("payload init", payload);
+
+        await db.insert_exhibition(payload);
+
+        await this.insert_seen_exhibition(event.name, gallery_id);
+
+        // const details = await this.extract_details(markdown);
+
+        // if (!details) {
+        //   await this.closePage(event.url, `no details found ${event.url}`);
+        //   return;
+        // }
 
         // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
-        if (this.hasEventEnded(details.end_date)) {
-          return;
-        }
+        // if (this.hasEventEnded(details.end_date)) {
+        //   return;
+        // }
 
-        if (!details.exhibition_name) {
-          return;
-        }
+        // if (!details.exhibition_name) {
+        //   return;
+        // }
 
         // const images = await this.extractImages(event.url, event.name);
         // details.image_urls = images;
-
-        await this.insertDbRecord(details, event.url, gallery_id);
-        await this.insert_seen_exhibition(event.name, gallery_id);
       }),
     );
 
