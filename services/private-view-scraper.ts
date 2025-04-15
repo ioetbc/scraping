@@ -1,5 +1,4 @@
 import {Browser, launch, Page} from "puppeteer";
-import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
 import {DatabaseService} from "./database.js";
@@ -52,7 +51,7 @@ export class PrivateViewScraper {
     });
 
     if (!result) {
-      console.log("llm unable to parse", GALLERY_URL);
+      console.log("llm unable to parse");
       return undefined;
     }
 

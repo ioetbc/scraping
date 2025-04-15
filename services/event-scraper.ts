@@ -1,12 +1,9 @@
 import {Browser, launch, Page} from "puppeteer";
-import fs from "fs";
 import * as cheerio from "cheerio";
-import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
 import {format, isAfter} from "date-fns";
 import {DatabaseService} from "./database.js";
-import {llm} from "../llm/index.js";
 import {
   details_schema,
   exhibition_name_schema,
@@ -198,7 +195,7 @@ export class EventScraper {
       });
 
       if (!result) {
-        console.log("llm unable to parse", GALLERY_URL);
+        console.log("unable to create results from find events");
         return [];
       }
 
