@@ -42,7 +42,8 @@ export const start_and_end_date_prompt = ({markdown}: {markdown: string}) => ({
     3. If you are only able to extract a start date and the end date is not present in the "Source of truth", set the end date to the start date.
     4. Convert all dates to ISO 8601 format. For example, September 27, 2025 is represented as 2025-09-27.
     5. If you are unable to accurately infer the year of the event, you can assume the current year. For example if the event states 12th Jan - 15th Feb. You can assume it is referring to the current year.
-    6. All dates in these instructions are for demonstration purposes. Do not use them in your response. Use the "Source of truth" to extract the correct dates for the given event.
+    6. Never fabricate dates! If you are unable to determine the exact dates, set the date to null.
+    7. All dates in these instructions are for demonstration purposes. Do not use them in your response. Use the "Source of truth" to extract the correct dates for the given event.
   </important>
 
 `,
@@ -123,12 +124,11 @@ export const details_prompt = ({markdown}: {markdown: string}) => ({
   `,
 });
 
-export const image_url_prompt = ({markdown}: {markdown: string}) => ({
+export const image_url_prompt = ({image_urls}: {image_urls: string[]}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
-    2. Schema: A Zod schema that defines the properties to be verified.
+    1. Image URLs: A list of all the image urls for the event.
   </inputs>
 
   Carefully select the most likely images that you think correspond to the event.
@@ -147,8 +147,7 @@ export const image_url_prompt = ({markdown}: {markdown: string}) => ({
   </import>
 `,
   user_prompt: `
-    "Source of truth": ${markdown},
-    "Schema": ${image_url_schema.shape}
+    "Image URLs": ${JSON.stringify(image_urls)},
   `,
 });
 

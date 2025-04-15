@@ -52,8 +52,9 @@ export class EventScraper {
   }
 
   launchBrowser = async () => {
+    console.log("launching new browser");
     this.browser = await launch({
-      headless: false,
+      headless: true,
       args: ["--no-sandbox", "--disable-gpu"],
     });
   };
@@ -100,11 +101,68 @@ export class EventScraper {
       return [];
     }
 
-    const hrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("a")).map((a) => a.href)
-    );
+    const hrefs = await page.evaluate(() => {
+      const links = document.querySelectorAll("a");
+
+      if (links.length === 0) {
+        return [];
+      }
+
+      const unique = new Set(Array.from(links).map((a) => a.href));
+
+      const blocked_domains = [
+        "mailto:",
+        "tel:",
+        "javascript:",
+        "https://instagram.com",
+        "https://www.instagram.com",
+        "https://www.facebook.com",
+        "https://www.linkedin.com",
+        "https://www.twitter.com",
+        "https://www.x.com",
+        "https://www.youtube.com",
+        "https://www.tiktok.com",
+        "https://www.pinterest.com",
+        "https://www.snapchat.com",
+        "https://www.artsy.net/",
+        "https://maps.app.goo.gl",
+        "http://www.google.com",
+      ];
+
+      const urls = Array.from(unique).filter(
+        (href) => !blocked_domains.some((domain) => href.startsWith(domain))
+      );
+
+      return urls;
+    });
 
     return hrefs ?? [];
+  }
+
+  async get_image_urls(key: string) {
+    const page = this.pages.get(key);
+    if (!page) {
+      console.log("no page found for key", key);
+      return [];
+    }
+
+    const image_urls = await page.evaluate(() => {
+      const images = document.querySelectorAll("img");
+      console.log("images", images);
+
+      const unique = new Set(Array.from(images).map((image) => image.src));
+
+      const blocked_extensions = [".svg", ".gif", ".ico"];
+
+      const urls = Array.from(unique).filter(
+        (href) =>
+          !blocked_extensions.some((extension) => href.endsWith(extension))
+      );
+
+      return urls;
+    });
+
+    return image_urls ?? [];
   }
 
   truncatePrompt = (text: string) => {
@@ -132,8 +190,11 @@ export class EventScraper {
       return [];
     }
 
+    console.log("event page text", text);
+
     const {system_prompt, user_prompt} = find_events_prompt({
-      source_of_truth: this.truncatePrompt(text),
+      // source_of_truth: this.truncatePrompt(text),
+      source_of_truth: text,
       hrefs,
       current_date: this.current_date,
     });
@@ -255,9 +316,9 @@ export class EventScraper {
     }
   };
 
-  extract_image_urls = async (page_text: string) => {
+  extract_image_urls = async (image_urls: string[]) => {
     const {system_prompt, user_prompt} = image_url_prompt({
-      markdown: page_text,
+      image_urls,
     });
 
     try {
@@ -548,13 +609,14 @@ export class EventScraper {
     }
   };
 
-  hasEventEnded = (endDate: string | null): boolean => {
+  hasEventEnded = (endDate: string | Date | null): boolean => {
     if (!endDate) {
       return false;
     }
 
     const now = new Date();
-    const eventEndDate = this.convertDate(endDate);
+    const eventEndDate =
+      typeof endDate === "object" ? endDate : this.convertDate(endDate);
 
     if (!eventEndDate) {
       return false;
@@ -568,10 +630,8 @@ export class EventScraper {
     const pages = await this.browser?.pages();
     console.log("number of browser pages open:", pages?.length);
 
-    if (!this.browser) {
-      console.log("launching browser");
-      await this.launchBrowser();
-    }
+    console.log("launching browser");
+    await this.launchBrowser();
 
     console.time("scraping time");
     console.log("scraping url", url);
@@ -591,115 +651,157 @@ export class EventScraper {
     //
     const page_key = url;
 
-    await this.visitWebsite(url);
+    try {
+      await this.visitWebsite(url);
 
-    console.log("getting page text");
-    const page_text = await this.getInnerText(page_key);
-    console.log("getting hrefs");
-    const hrefs = await this.getHrefs(page_key);
-    console.log("getting events");
-    const events = await this.find_events(page_text, hrefs);
+      console.log("getting page text");
+      const page_text = await this.getInnerText(page_key);
+      // console.log("page text", page_text);
+      console.log("getting hrefs");
+      const hrefs = await this.getHrefs(page_key);
+      console.log("hrefs", hrefs);
 
-    console.log("events.length", events.length);
-    console.log("events", events);
+      // TODO remove duplicated from hrefs annakultys seems to have many of them!
+      console.log("getting events");
+      const events = await this.find_events(page_text, hrefs);
 
-    if (events.length === 0) {
-      console.log("no events found for:", url);
-      await this.closePage(page_key, "No events found");
-      return;
+      console.log("events.length", events.length);
+      console.log("events", events);
+
+      if (events.length === 0) {
+        console.log("no events found for:", url);
+        await this.closePage(page_key, "No events found");
+        return;
+      }
+
+      const db = new DatabaseService();
+      const seen_exhibitions = await db.get_seen_exhibitions(); // this.db
+
+      console.log("seen exhibitions", seen_exhibitions.length);
+
+      await Promise.allSettled(
+        events.map(async (event) => {
+          // filter events instead of this
+          const {should_skip, reason} = await this.blockEvent(
+            event,
+            seen_exhibitions
+          );
+
+          if (should_skip) {
+            return;
+          }
+
+          console.log("visiting event details page", event.event_page_url);
+
+          await this.visitWebsite(event.event_page_url);
+
+          const markdown = await this.getInnerText(event.event_page_url);
+
+          if (!markdown) {
+            await this.closePage(
+              event.event_page_url,
+              "No markdown found for event details page"
+            );
+            return;
+          }
+
+          const images = await this.get_image_urls(event.event_page_url);
+
+          console.log("images", images);
+
+          // console.log("markdown lol", markdown);
+
+          // const response = await fetch(
+          //   `https://r.jina.ai/${event.event_page_url}`
+          // );
+          // const markdown = await response.text();
+
+          // TODO: first get the legit end date of the event and if in past then don't bother with the other checks
+
+          const [
+            private_view,
+            start_and_end_date,
+            featured_artists,
+            exhibition_name,
+            image_urls,
+            details,
+            is_ticketed,
+          ] = await Promise.all([
+            this.extract_private_view(markdown),
+            this.extract_start_end_date(markdown),
+            this.extract_featured_artists(markdown),
+            this.extract_exhibition_name(markdown),
+            this.extract_image_urls(images),
+            this.extract_details(markdown),
+            this.extract_is_ticketed(markdown),
+          ]);
+
+          // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
+
+          const payload = {
+            exhibition_name: exhibition_name?.exhibition_name ?? null,
+            info: details?.details ?? null,
+            featured_artists: JSON.stringify(
+              featured_artists?.featured_artists ?? []
+            ),
+            exhibition_page_url: event.event_page_url,
+            image_urls: JSON.stringify(image_urls?.urls ?? []),
+            is_ticketed: !!is_ticketed?.is_ticketed,
+            start_date: this.convertDate(
+              start_and_end_date?.start_date ?? event.start_date ?? null
+            ),
+            end_date: this.convertDate(
+              start_and_end_date?.end_date ?? event.end_date ?? null
+            ),
+            private_view_start_date: this.convertDate(
+              private_view?.private_view_start_date ??
+                event.private_view_start_date ??
+                null
+            ),
+            private_view_end_date: this.convertDate(
+              private_view?.private_view_end_date ??
+                event.private_view_end_date ??
+                null
+            ),
+            gallery_id,
+          };
+
+          // console.log(`payload?.end_date ${event.name}`, payload?.end_date);
+          // console.log(
+          //   `start_and_end_date?.end_date ${event.name}`,
+          //   start_and_end_date?.end_date
+          // );
+
+          if (this.hasEventEnded(payload?.end_date ?? null)) {
+            await this.closePage(
+              event.event_page_url,
+              `Blocking: event has ended ${event.name} ${payload.end_date}`
+            );
+            return;
+          }
+
+          if (!exhibition_name?.exhibition_name) {
+            await this.closePage(
+              event.event_page_url,
+              `Blocking: no exhibition name found ${event.name}`
+            );
+            return;
+          }
+
+          await db.insert_exhibition(payload);
+          await this.insert_seen_exhibition(event.name, gallery_id);
+          await this.closePage(event.event_page_url, "Done");
+        })
+      );
+
+      return events;
+    } catch (error) {
+      console.log("error scraping url:", error);
+      console.error("Error processing main page:", error);
+    } finally {
+      console.timeEnd("scraping time");
+      await this.closePage(page_key, "Done");
+      await this.browser.close();
     }
-
-    const db = new DatabaseService();
-    const seen_exhibitions = await db.get_seen_exhibitions(); // this.db
-
-    console.log("seen exhibitions", seen_exhibitions.length);
-
-    await Promise.all(
-      events.map(async (event) => {
-        // filter events instead of this
-        const {should_skip, reason} = await this.blockEvent(
-          event,
-          seen_exhibitions
-        );
-
-        if (should_skip) {
-          return;
-        }
-
-        console.log("visiting event details page", event.event_page_url);
-
-        await this.visitWebsite(event.event_page_url);
-
-        const markdown = await this.getInnerText(event.event_page_url);
-
-        if (!markdown) {
-          await this.closePage(
-            event.event_page_url,
-            "No markdown found for event details page"
-          );
-          return;
-        }
-
-        // const response = await fetch(
-        //   `https://r.jina.ai/${event.event_page_url}`
-        // );
-        // const markdown = await response.text();
-
-        const private_view = await this.extract_private_view(markdown);
-        const start_and_end_date = await this.extract_start_end_date(markdown);
-        const featured_artists = await this.extract_featured_artists(markdown);
-        const exhibition_name = await this.extract_exhibition_name(markdown);
-        const image_urls = await this.extract_image_urls(markdown);
-        const details = await this.extract_details(markdown);
-        const is_ticketed = await this.extract_is_ticketed(markdown);
-
-        // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
-
-        if (this.hasEventEnded(start_and_end_date?.end_date ?? null)) {
-          await this.closePage(
-            event.event_page_url,
-            `Blocking: event has ended ${event.name}`
-          );
-          return;
-        }
-
-        if (!exhibition_name?.exhibition_name) {
-          await this.closePage(
-            event.event_page_url,
-            `Blocking: no exhibition name found ${event.name}`
-          );
-          return;
-        }
-
-        const payload = {
-          exhibition_name: exhibition_name?.exhibition_name ?? null,
-          info: details?.details ?? null,
-          featured_artists: JSON.stringify(
-            featured_artists?.featured_artists ?? []
-          ),
-          exhibition_page_url: event.event_page_url,
-          image_urls: JSON.stringify(image_urls ?? []),
-          is_ticketed: !!is_ticketed?.is_ticketed,
-          start_date: this.convertDate(start_and_end_date?.start_date ?? null),
-          end_date: this.convertDate(start_and_end_date?.end_date ?? null),
-          private_view_start_date: this.convertDate(
-            private_view?.private_view_start_date ?? null
-          ),
-          private_view_end_date: this.convertDate(
-            private_view?.private_view_end_date ?? null
-          ),
-          gallery_id,
-        };
-
-        await db.insert_exhibition(payload);
-        await this.insert_seen_exhibition(event.name, gallery_id);
-        await this.closePage(event.event_page_url, "Done");
-      })
-    );
-
-    console.timeEnd("scraping time");
-    await this.closePage(page_key, "Done");
-
-    return events;
   }
 }

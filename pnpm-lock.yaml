@@ -32,6 +32,9 @@ importers:
       '@playwright/test':
         specifier: ^1.49.1
         version: 1.51.0
+      '@spider-cloud/spider-client':
+        specifier: ^0.1.32
+        version: 0.1.32
       ai:
         specifier: ^4.2.0
         version: 4.2.0(react@19.0.0)(zod@3.24.2)
@@ -646,6 +649,9 @@ packages:
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
 
+  '@spider-cloud/spider-client@0.1.32':
+    resolution: {integrity: sha512-ILICfhb7+48ZdouAjNvy2UPVzcI76RFm1g68PGep5eZrUEkXp1pprok+UmTiCSd1JFWwqvosmiugjsU+iCIRYA==}
+
   '@stricli/auto-complete@1.1.2':
     resolution: {integrity: sha512-sTNMh2bOvGH4meWSm4QCjbOCT1+8VSDbOkiOB6nYLaJZOr4CnWbn1s8N5h1GI6gMosUNP7waRr6FJVBhn/JfsQ==}
     hasBin: true
@@ -1205,6 +1211,9 @@ packages:
   expect-type@1.2.1:
     resolution: {integrity: sha512-/kP8CAwxzLVEeFrMm4kMmy4CCDlpipyA7MYLVrdJIkV0fYF0UaigQHRsxHiuY/GEea+bh4KSv3TIlgr+2UL6bw==}
     engines: {node: '>=12.0.0'}
+
+  exponential-backoff@3.1.2:
+    resolution: {integrity: sha512-8QxYTVXUkuy7fIIoitQkPwGonB8F3Zj8eEO8Sqg9Zv/bkI7RJAzowee4gr81Hak/dUTpA2Z7VfQgoijjPNlUZA==}
 
   extract-zip@2.0.1:
     resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
@@ -2674,6 +2683,10 @@ snapshots:
 
   '@sec-ant/readable-stream@0.4.1': {}
 
+  '@spider-cloud/spider-client@0.1.32':
+    dependencies:
+      exponential-backoff: 3.1.2
+
   '@stricli/auto-complete@1.1.2':
     dependencies:
       '@stricli/core': 1.1.2
@@ -3198,6 +3211,8 @@ snapshots:
   expand-template@2.0.3: {}
 
   expect-type@1.2.1: {}
+
+  exponential-backoff@3.1.2: {}
 
   extract-zip@2.0.1:
     dependencies:

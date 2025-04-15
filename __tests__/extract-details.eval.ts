@@ -1,10 +1,10 @@
-import { Factuality, Levenshtein } from "autoevals";
-import { evalite } from "evalite";
+import {Factuality, Levenshtein} from "autoevals";
+import {evalite} from "evalite";
 
-import { EventScraper } from "../services/event-scraper.js";
+import {EventScraper} from "../services/event-scraper.js";
 
 import dotenv from "dotenv";
-import { extract_private_view_prompt } from "../prompts/extract-event-details-prompt.js";
+import {extract_private_view_prompt} from "../prompts/extract-event-details-prompt.js";
 
 dotenv.config();
 
@@ -46,8 +46,8 @@ const a_leap_of_sympathy = `
   For press enquiries, please email: [sonja@richardsaltoun.com](mailto:%20sonja@richardsaltoun.com)
 `;
 
-const { user_prompt } = extract_private_view_prompt({
-  page_text: a_leap_of_sympathy,
+const {user_prompt} = extract_private_view_prompt({
+  markdown: a_leap_of_sympathy,
 });
 
 evalite("Extract private view times", {
@@ -65,8 +65,8 @@ evalite("Extract private view times", {
     const result = await scraper.extract_details(a_leap_of_sympathy);
 
     return JSON.stringify({
-      private_view_start_date: result?.private_view_start_date,
-      private_view_end_date: result?.private_view_end_date,
+      private_view_start_date: result?.details,
+      private_view_end_date: result?.details,
     });
   },
   scorers: [Factuality, Levenshtein],
