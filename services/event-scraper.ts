@@ -3,23 +3,24 @@ import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
 import {format, isAfter} from "date-fns";
+import {DatabaseService} from "./database.js";
 
-// TODO export object from main schema file to avoid multiple imports from different places same for the prompts
 import {
   details_schema,
   exhibition_name_schema,
   featured_artist_schema,
   image_url_schema,
   is_ticketed_schema,
-  mega_schema,
   private_view_schema,
   start_date_end_date_schema,
-} from "../zod/event-details-schema.js";
-import {event_map_schema} from "../zod/event-map-schema.js";
-import {event_image_schema} from "../zod/event-image-schema.js";
+  event_map_schema,
+  event_image_schema,
+  type Event,
+  type MegaSchema,
+} from "../zod/index.js";
 
-import {find_events_prompt} from "../prompts/find-events-prompt.js";
 import {
+  find_events_prompt,
   details_prompt,
   exhibition_name_prompt,
   extract_private_view_prompt,
@@ -27,12 +28,7 @@ import {
   image_url_prompt,
   is_ticketed_prompt,
   start_and_end_date_prompt,
-} from "../prompts/extract-event-details-prompt.js";
-
-import {DatabaseService} from "./database.js";
-import {z} from "zod";
-
-type Event = z.infer<typeof event_map_schema.shape.events>[number];
+} from "../prompts/index.js";
 
 export class EventScraper {
   pages: Map<string, Page>;
@@ -380,7 +376,7 @@ export class EventScraper {
   };
 
   insertDbRecord = async (
-    record: z.infer<typeof mega_schema>,
+    record: MegaSchema,
     url: string,
     gallery_id: string
   ) => {
