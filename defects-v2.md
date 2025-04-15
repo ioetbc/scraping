@@ -76,7 +76,4 @@ tbf doesnt show it on the event details page yet, just in their stupid gif
 [] https://www.whitecube.com/gallery-exhibitions/antony-gormley-masons-yard-2025 Did not collect any images
 [x] https://www.whitecube.com/gallery-exhibitions/richard-hunt-bermondsey-2025 Martin luther king is named as a featured artist (it is a solo show)
 [x] https://www.whitecube.com/gallery-exhibitions/anselm-kiefer-masons-yard-2025 - Exhibition name wrong, should just be the artists name: Kiefer / Van Gogh > Anselm Kiefer. Also no image found
-[] https://www.whitecube.com/gallery-exhibitions/sara-flores-bermondsey-2025-2 - Bakish Mai is the name of the show not the featured artist. Also no image found.
-[]
-
-[] write eval for workplace - getting events - currently collects 66 of them :grim
+[x] https://www.whitecube.com/gallery-exhibitions/sara-flores-bermondsey-2025-2 - Bakish Mai is the name of the show not the featured artist. Also no image found.

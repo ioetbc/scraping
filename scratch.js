@@ -318,13 +318,7 @@
 //     console.error("Crawl Error:", error);
 //   });
 
-import TurndownService from "turndown";
-
-var turndownService = new TurndownService();
-
-const response = await fetch(
-  "https://www.whitecube.com/gallery-exhibitions/antony-gormley-masons-yard-2025"
-);
+const response = await fetch("https://www.198.org.uk/whats-on");
 
 const html = await response.text();
 
@@ -340,8 +334,8 @@ $("a").each((i, el) => {
   allAnchors.push({href, text});
 });
 
-$("iframe").remove();
-$("script").remove();
+// $("iframe").remove();
+// $("script").remove();
 $("style").remove();
 
 const bodyText = $("body").text();

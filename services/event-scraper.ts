@@ -1,5 +1,6 @@
 import {Browser, launch, Page} from "puppeteer";
 import fs from "fs";
+import * as cheerio from "cheerio";
 import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
@@ -79,8 +80,27 @@ export class EventScraper {
       return undefined;
     }
 
-    const html = await page?.evaluate(() => document.body.innerText);
-    return html?.trim();
+    const html = await page?.evaluate(() => document.body.innerHTML);
+
+    const $ = cheerio.load(html);
+
+    $("iframe").remove();
+    $("script").remove();
+    $("style").remove();
+
+    const text = $("body").text();
+
+    const cleaned_text = text
+      // Split by newline
+      .split("\n")
+      // Trim each line
+      .map((line) => line.trim())
+      // Filter out blank lines
+      .filter((line) => line.length > 0)
+      // Join everything with a single newline
+      .join("\n");
+
+    return cleaned_text;
   }
 
   async get_hrefs(key: string) {
@@ -162,8 +182,6 @@ export class EventScraper {
       console.log("no text passed to findEvents");
       return [];
     }
-
-    console.log("event page text", text);
 
     const {system_prompt, user_prompt} = find_events_prompt({
       source_of_truth: text,
