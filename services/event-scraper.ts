@@ -7,10 +7,8 @@ import {format, isAfter} from "date-fns";
 // TODO export object from main schema file to avoid multiple imports from different places same for the prompts
 import {
   details_schema,
-  event_details_schema,
   exhibition_name_schema,
   featured_artist_schema,
-  feedback_schema,
   image_url_schema,
   is_ticketed_schema,
   mega_schema,
@@ -20,7 +18,6 @@ import {
 import {event_map_schema} from "../zod/event-map-schema.js";
 import {event_image_schema} from "../zod/event-image-schema.js";
 
-import {provide_feedback_prompt} from "../prompts/provide-feedback-prompt.js";
 import {find_events_prompt} from "../prompts/find-events-prompt.js";
 import {
   details_prompt,
@@ -34,8 +31,6 @@ import {
 
 import {DatabaseService} from "./database.js";
 import {z} from "zod";
-
-import {encoding_for_model} from "tiktoken";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
@@ -164,22 +159,6 @@ export class EventScraper {
     return image_urls ?? [];
   }
 
-  truncatePrompt = (text: string) => {
-    const encoding = encoding_for_model("gpt-4"); // TODO pass the model in
-    const tokens = encoding.encode(text);
-    const MAX_PROMPT_TOKENS = 3000; // TODO This needs to be the max tokens from the model
-
-    let truncatedPrompt: string | Uint8Array = text; // TODO this needs to be string not Uint8Array
-
-    if (tokens.length > MAX_PROMPT_TOKENS) {
-      const truncatedTokens = tokens.slice(0, MAX_PROMPT_TOKENS);
-      truncatedPrompt = encoding.decode(truncatedTokens);
-    }
-
-    encoding.free();
-    return truncatedPrompt;
-  };
-
   async find_events(
     text: string | undefined,
     hrefs: string[]
@@ -192,7 +171,6 @@ export class EventScraper {
     console.log("event page text", text);
 
     const {system_prompt, user_prompt} = find_events_prompt({
-      // source_of_truth: this.truncatePrompt(text),
       source_of_truth: text,
       hrefs,
       current_date: this.current_date,
@@ -353,25 +331,6 @@ export class EventScraper {
     }
   };
 
-  // extract_details = async (page_text: string) => {
-  //   const { system_prompt, user_prompt } = extract_private_view_prompt({
-  //     page_text,
-  //   });
-
-  //   try {
-  //     const data = await generateObject({
-  //       model: openai("gpt-4o-mini"),
-  //       system: system_prompt,
-  //       prompt: user_prompt,
-  //       schema: event_details_schema,
-  //     });
-
-  //     return data.object;
-  //   } catch (error) {
-  //     console.log("Error extracting data:", error);
-  //   }
-  // };
-
   extractImages = async (
     key: string,
     event_name: string
@@ -410,97 +369,6 @@ export class EventScraper {
     } catch (error) {
       console.log("LLM error, unable to choose most likely images");
       return [];
-    }
-  };
-
-  provide_feedback = async (
-    record: z.infer<typeof event_details_schema>,
-    source_of_truth: string | undefined
-  ) => {
-    if (!source_of_truth) {
-      console.log("no text passed to provide_feedback");
-      return undefined;
-    }
-
-    console.log("calling provide_feedback with record:", !!record);
-    console.log("calling provide_feedback with text:", !!source_of_truth);
-
-    const {system_prompt, user_prompt} = provide_feedback_prompt({
-      record,
-      source_of_truth,
-    });
-
-    try {
-      const data = await generateObject({
-        model: openai("gpt-4o"),
-        schema: feedback_schema,
-        system: system_prompt,
-        prompt: user_prompt,
-      });
-
-      return {
-        ...data.object,
-        has_feedback: Object.values(data.object).some(
-          (predicate) => predicate !== null
-        ),
-      };
-    } catch (error) {
-      console.log("Error extracting data:", error);
-      throw error;
-    }
-  };
-
-  action_feedback = async ({
-    feedback,
-    original_record,
-    source_of_truth,
-  }: {
-    feedback: z.infer<typeof feedback_schema>;
-    original_record: z.infer<typeof event_details_schema>;
-    source_of_truth: string;
-  }) => {
-    console.log("actioning feedback");
-    try {
-      const data = await generateObject({
-        model: openai("gpt-4o-mini"),
-        schema: event_details_schema,
-        system: `
-        You are a data accuracy assistant. Your task is to update an existing JSON record "Original record" by applying any actionable feedback received (“Feedback”), cross-referencing the “Source of truth” for the correct values.
-
-        You have three inputs:
-
-        Feedback:
-        A JSON object where each property matches a field in the schema.
-
-        A short feedback string: Indicates something is incorrect or missing. Use the "Source of truth" to supply a fix for the property.
-
-        If a property does not exist in the feedback object there is no change needed, do not alter the property in the "Original record"
-
-        Source of truth:
-        A text block containing the most accurate information about the record. If the "Feedback" indicates a discrepancy, rely on this text block to correct the property.
-
-        Original record:
-        The initial JSON record you must update.
-
-        Instructions:
-
-        Only modify properties that have actionable feedback in the "Feedback" object.
-
-        If a property does not exist in the "Feedback" object, do not change the property from its value in the "Original record".
-
-        Use the "Source of truth" to find the correct replacement values for properties marked with feedback.
-
-        If the "Source of truth" does not contain enough information to fix the property, return null for the property.`,
-        prompt: `
-        "Feedback": ${JSON.stringify(feedback)},
-        "Source of truth": ${source_of_truth},
-        "Original record": ${JSON.stringify(original_record)}`,
-      });
-
-      return data.object;
-    } catch (error) {
-      console.log("Error actioning feedback:", error);
-      throw error;
     }
   };
 
@@ -700,8 +568,6 @@ export class EventScraper {
 
       console.log("seen exhibitions", seen_exhibitions.length);
 
-      // const selected_events = [events[2]];
-
       await Promise.allSettled(
         events.map(async (event) => {
           // filter events instead of this
@@ -732,31 +598,9 @@ export class EventScraper {
 
           const images = await this.get_image_urls(event.event_page_url);
 
-          // console.log("images", images);
-
           // TODO: first get the legit end date of the event and if in past then don't bother with the other checks
 
           const details = await this.extract_event(markdown, images);
-
-          // const [
-          //   private_view,
-          //   start_and_end_date,
-          //   featured_artists,
-          //   exhibition_name,
-          //   image_urls,
-          //   details,
-          //   is_ticketed,
-          // ] = await Promise.all([
-          //   this.extract_private_view(markdown),
-          //   this.extract_start_end_date(markdown),
-          //   this.extract_featured_artists(markdown),
-          //   this.extract_exhibition_name(markdown),
-          //   this.extract_image_urls(images),
-          //   this.extract_details(markdown),
-          //   this.extract_is_ticketed(markdown),
-          // ]);
-
-          // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
           const payload = {
             exhibition_name: details.exhibition_name ?? null,
@@ -784,11 +628,7 @@ export class EventScraper {
             gallery_id,
           };
 
-          // console.log(`payload?.end_date ${event.name}`, payload?.end_date);
-          // console.log(
-          //   `start_and_end_date?.end_date ${event.name}`,
-          //   start_and_end_date?.end_date
-          // );
+          // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
           if (this.hasEventEnded(payload?.end_date ?? null)) {
             await this.closePage(

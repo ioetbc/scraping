@@ -78,3 +78,5 @@ tbf doesnt show it on the event details page yet, just in their stupid gif
 [x] https://www.whitecube.com/gallery-exhibitions/anselm-kiefer-masons-yard-2025 - Exhibition name wrong, should just be the artists name: Kiefer / Van Gogh > Anselm Kiefer. Also no image found
 [] https://www.whitecube.com/gallery-exhibitions/sara-flores-bermondsey-2025-2 - Bakish Mai is the name of the show not the featured artist. Also no image found.
 []
+
+[] write eval for workplace - getting events - currently collects 66 of them :grim

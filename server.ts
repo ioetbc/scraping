@@ -19,7 +19,7 @@ app.get("/event-scraper", async (context) => {
   const workplace_gallery_id = 125;
 
   const single = galleries.filter(
-    (gallery) => gallery.id === workplace_gallery_id
+    (gallery) => gallery.id === white_cube_gallery_id
   );
 
   const done = [];
