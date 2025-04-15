@@ -275,13 +275,13 @@
 // // TODO
 // // Consider channging dates to a date object instead of string in the schema & perhaps changes dates using js before comparison
 
-import {Spider} from "@spider-cloud/spider-client";
+// import {Spider} from "@spider-cloud/spider-client";
 
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 
-dotenv.config();
+// dotenv.config();
 
-const app = new Spider({apiKey: process.env.SPIDER_CLOUD_API_KEY});
+// const app = new Spider({apiKey: process.env.SPIDER_CLOUD_API_KEY});
 
 // const url = "https://chisenhale.org.uk/whats-on/forum-20250501-1900/";
 // const url = "https://spider.cloud";
@@ -298,22 +298,53 @@ const app = new Spider({apiKey: process.env.SPIDER_CLOUD_API_KEY});
 //
 //
 // https://www.corvi-mora.com/current/
-app
-  .crawlUrl(
-    "https://www.aliceblackgallery.com/forthcoming-exhibitions/t83lfb3adywsqw0ooc6krpbvd248vh",
-    {
-      return_format: "markdown",
-      limit: 5,
-      proxy_enabled: true,
-      store_data: false,
-      metadata: false,
-      anti_bot: false,
-      respect_robots: false,
-    }
-  )
-  .then((result) => {
-    console.log("Crawl Result:", result);
-  })
-  .catch((error) => {
-    console.error("Crawl Error:", error);
-  });
+// app
+//   .crawlUrl(
+//     "https://www.aliceblackgallery.com/forthcoming-exhibitions/t83lfb3adywsqw0ooc6krpbvd248vh",
+//     {
+//       return_format: "markdown",
+//       limit: 5,
+//       proxy_enabled: true,
+//       store_data: false,
+//       metadata: false,
+//       anti_bot: false,
+//       respect_robots: false,
+//     }
+//   )
+//   .then((result) => {
+//     console.log("Crawl Result:", result);
+//   })
+//   .catch((error) => {
+//     console.error("Crawl Error:", error);
+//   });
+
+import TurndownService from "turndown";
+
+var turndownService = new TurndownService();
+
+const response = await fetch(
+  "https://www.whitecube.com/gallery-exhibitions/antony-gormley-masons-yard-2025"
+);
+
+const html = await response.text();
+
+const allAnchors = [];
+
+import * as cheerio from "cheerio";
+
+const $ = cheerio.load(html);
+
+$("a").each((i, el) => {
+  const href = $(el).attr("href");
+  const text = $(el).text().trim();
+  allAnchors.push({href, text});
+});
+
+$("iframe").remove();
+$("script").remove();
+$("style").remove();
+
+const bodyText = $("body").text();
+
+console.log("bodyText", bodyText);
+console.log("allAnchors", allAnchors);

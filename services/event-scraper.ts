@@ -1,10 +1,11 @@
 import {Browser, launch, Page} from "puppeteer";
+import fs from "fs";
 import {GALLERY_URL} from "../const.js";
 import {generateObject} from "ai";
 import {openai} from "@ai-sdk/openai";
 import {format, isAfter} from "date-fns";
 import {DatabaseService} from "./database.js";
-
+import {llm} from "../llm/index.js";
 import {
   details_schema,
   exhibition_name_schema,
@@ -14,9 +15,7 @@ import {
   private_view_schema,
   start_date_end_date_schema,
   event_map_schema,
-  event_image_schema,
   type Event,
-  type MegaSchema,
 } from "../zod/index.js";
 
 import {
@@ -28,7 +27,7 @@ import {
   image_url_prompt,
   is_ticketed_prompt,
   start_and_end_date_prompt,
-} from "../prompts/index.js";
+} from "../llm/prompts/index.js";
 
 export class EventScraper {
   pages: Map<string, Page>;
@@ -41,7 +40,7 @@ export class EventScraper {
     this.current_date = format(new Date(), "yyyy-MM-dd");
   }
 
-  launchBrowser = async () => {
+  launch_browser = async () => {
     console.log("launching new browser");
     this.browser = await launch({
       headless: true,
@@ -49,7 +48,7 @@ export class EventScraper {
     });
   };
 
-  async visitWebsite(url: string) {
+  async visit_website(url: string) {
     if (!this.browser) {
       console.log("no browser found");
       return undefined;
@@ -70,7 +69,7 @@ export class EventScraper {
     }
   }
 
-  async getInnerText(key: string) {
+  async get_inner_text(key: string) {
     const page = this.pages.get(key);
     if (!page) {
       await this.closePage(
@@ -84,7 +83,7 @@ export class EventScraper {
     return html?.trim();
   }
 
-  async getHrefs(key: string) {
+  async get_hrefs(key: string) {
     const page = this.pages.get(key);
     if (!page) {
       console.log("no page found for key", key);
@@ -283,6 +282,12 @@ export class EventScraper {
         schema: details_schema,
       });
 
+      // const data = await llm({
+      //   system_prompt,
+      //   user_prompt,
+      //   schema: details_schema,
+      // });
+
       return data.object;
     } catch (error) {
       console.log("Error extracting data:", error);
@@ -327,78 +332,11 @@ export class EventScraper {
     }
   };
 
-  extractImages = async (
-    key: string,
-    event_name: string
-  ): Promise<string[]> => {
-    const page = this.getPage(key);
-
-    if (!page) {
-      this.closePage(key, "No key for page provided to extract image method");
-      return [];
-    }
-
-    const imageElements = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("img")).map((element) => element.src)
-    );
-
-    const jpgs =
-      imageElements?.filter((image) => !image.endsWith(".svg")) ?? [];
-
-    // TODO also scrap ones that are tiny e.g. https://a-i-gallery.com/exhibitions/63-feeling-like-home-tenter-ground-london/press_release_text/ returns the related artist images at the bottom of the page which are tiny
-    try {
-      const data = await generateObject({
-        model: openai("gpt-4o-mini"),
-        system: `
-          You are a diligent lead researcher.
-          You have received a "list of image urls".
-          Your job is to:
-            1. Carefully select the most likely images that correspond to the event
-            2. Pick a maximum of 5 images
-            3. Reject images that do not correspond to the event for example a logo
-            4. Reject image formats that are not a jpg, jpeg, png, webp or similar. For example you should reject .svg and base64 image formats
-        `,
-        prompt: `The event name is ${event_name}. Here is the "List of images" ${jpgs}`,
-        schema: event_image_schema,
-      });
-      return data.object.image_urls;
-    } catch (error) {
-      console.log("LLM error, unable to choose most likely images");
-      return [];
-    }
-  };
-
   convertDate = (date: string | null) => {
     if (!date) return null;
 
     const converted = new Date(date);
     return isNaN(converted.getTime()) ? null : converted;
-  };
-
-  insertDbRecord = async (
-    record: MegaSchema,
-    url: string,
-    gallery_id: string
-  ) => {
-    const db = new DatabaseService();
-
-    await db.insert_exhibition({
-      exhibition_name: record.exhibition_name,
-      info: record.details,
-      featured_artists: JSON.stringify(record.featured_artists),
-      exhibition_page_url: url,
-      image_urls: JSON.stringify(record.urls),
-      is_ticketed: !!record.is_ticketed,
-      start_date: this.convertDate(record?.start_date),
-      end_date: this.convertDate(record?.end_date),
-      private_view_start_date: this.convertDate(
-        record.private_view_start_date ?? null
-      ),
-      private_view_end_date: this.convertDate(
-        record.private_view_end_date ?? null
-      ),
-      gallery_id,
-    });
   };
 
   insert_seen_exhibition = async (
@@ -407,10 +345,6 @@ export class EventScraper {
   ) => {
     const db = new DatabaseService();
     await db.insert_seen_exhibition(exhibition_name, gallery_id);
-  };
-
-  getPage = (key: string) => {
-    return this.pages.get(key);
   };
 
   blockEvent = async (
@@ -452,7 +386,6 @@ export class EventScraper {
   };
 
   closePage = async (key: string, reason?: string) => {
-    // const page = this.getPage(key);
     const page = this.pages.get(key);
     if (page) {
       try {
@@ -519,12 +452,7 @@ export class EventScraper {
   };
 
   async handler(url: string, gallery_id: string) {
-    console.log("number of this.pages open:", this.pages.size);
-    const pages = await this.browser?.pages();
-    console.log("number of browser pages open:", pages?.length);
-
-    console.log("launching browser");
-    await this.launchBrowser();
+    await this.launch_browser();
 
     console.time("scraping time");
     console.log("scraping url", url);
@@ -537,13 +465,13 @@ export class EventScraper {
     const page_key = url;
 
     try {
-      await this.visitWebsite(url);
+      await this.visit_website(url);
 
       console.log("getting page text");
-      const page_text = await this.getInnerText(page_key);
+      const page_text = await this.get_inner_text(page_key);
       // console.log("page text", page_text);
       console.log("getting hrefs");
-      const hrefs = await this.getHrefs(page_key);
+      const hrefs = await this.get_hrefs(page_key);
       console.log("hrefs", hrefs);
 
       // TODO remove duplicated from hrefs annakultys seems to have many of them!
@@ -578,9 +506,9 @@ export class EventScraper {
 
           console.log("visiting event details page", event.event_page_url);
 
-          await this.visitWebsite(event.event_page_url);
+          await this.visit_website(event.event_page_url);
 
-          const markdown = await this.getInnerText(event.event_page_url);
+          const markdown = await this.get_inner_text(event.event_page_url);
 
           if (!markdown) {
             await this.closePage(
@@ -590,7 +518,15 @@ export class EventScraper {
             return;
           }
 
-          console.log(`${event.name} markdown:`, markdown);
+          // console.log("writing source of truth", event.name);
+          // const snake_case_event_name = event.name
+          //   .replace(/\s+/g, "_")
+          //   .toLowerCase();
+          // const filePath = `./__tests__/generated/mocks/${snake_case_event_name}.ts`;
+          // const fileContent = `export const ${snake_case_event_name}_source_of_truth = \`${markdown}\`;`;
+          // fs.writeFileSync(filePath, fileContent);
+
+          // console.log(`${event.name} markdown:`, markdown);
 
           const images = await this.get_image_urls(event.event_page_url);
 

@@ -1,23 +1,5 @@
 ## TODO
 
-1. promise.all on events array
-2. get AI to check work
-3. only collect London based exhibitions
-4. https://www.flowersgallery.com/exhibitions/610-aida-tomescu-torn-through-the-white/
-   start_date: '28 - 30 March 2025',
-   end_date: '28 - 30 March 2025',
-   start date in db is null because js unable to convert these to dates
-5. Morris Mania exhibition name is incorrect, I think there was a fix before
-6. Joy before the object (https://www.seventeengallery.com/exhibitions/joy-before-the-object/)
-   start_date: '20th June 2020',
-   end_date: '18th July 2020',
-   It's in flipping 2020 make the AI better
-7. Feeling like home need to add images!
-8. Yves Dana need to add images!
-9. Remove stage hand shite
-10. Remove random gallery json files
-11. In the promise.all we might not need to await everything fire and forget?
-12. Use promose.allsettled instead?
-
-seen exhibitions > 1156
-null names > 24
+[] use biome
+[] use gpt 4.1
+[] use fetch to get html instead of puppeteer?

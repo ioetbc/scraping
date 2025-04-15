@@ -1,13 +1,11 @@
 import {
   details_schema,
-  event_details_schema,
   exhibition_name_schema,
   featured_artist_schema,
-  image_url_schema,
   is_ticketed_schema,
   private_view_schema,
   start_date_end_date_schema,
-} from "../zod/event-details-schema.js";
+} from "../../zod/index.js";
 
 export const start_and_end_date_prompt = ({markdown}: {markdown: string}) => ({
   system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event start dates and end dates.
@@ -114,6 +112,7 @@ export const details_prompt = ({markdown}: {markdown: string}) => ({
     You must only use the "Source of truth" and not fabricate or make up any texts.
     The press release should be a full description of the event.
     Do not include information relating to membership pricing, opening times, contact details, or any other irrelevant information.
+    Do not inclide line breaks \n in your response.
   </important>
 `,
   user_prompt: `
