@@ -14,17 +14,23 @@ app.get("/event-scraper", async (context) => {
   const scraper = new EventScraper();
 
   const from = galleries.slice(115);
-  const single = galleries.filter((gallery) => gallery.id === 117);
+
+  const white_cube_gallery_id = 185;
+  const workplace_gallery_id = 125;
+
+  const single = galleries.filter(
+    (gallery) => gallery.id === workplace_gallery_id
+  );
 
   const done = [];
 
-  for (const gallery of from) {
+  for (const gallery of single) {
     if (gallery.name === "Cardi Gallery") continue;
 
     await scraper.handler(gallery.exhibition_page_url, gallery.id);
 
     done.push(gallery.id);
-    console.log(`done ${done.length} / ${from.length}`);
+    console.log(`done ${done.length} / ${single.length}`);
   }
 
   // return context.text("Done");
@@ -45,7 +51,7 @@ app.get("/private-view-scraper", async (context) => {
 serve(
   {
     fetch: app.fetch,
-    port: 3000,
+    port: 8080,
   },
   ({port}) => {
     console.log(`Server is running on http://localhost:${port}`);

@@ -36,7 +36,6 @@ import {DatabaseService} from "./database.js";
 import {z} from "zod";
 
 import {encoding_for_model} from "tiktoken";
-import {HonoBase} from "hono/hono-base";
 
 type Event = z.infer<typeof event_map_schema.shape.events>[number];
 
@@ -625,6 +624,36 @@ export class EventScraper {
     return !isAfter(eventEndDate, now);
   };
 
+  extract_event = async (page_text: string, images: string[]) => {
+    const [
+      private_view,
+      start_and_end_date,
+      featured_artists,
+      exhibition_name,
+      image_urls,
+      details,
+      is_ticketed,
+    ] = await Promise.all([
+      this.extract_private_view(page_text),
+      this.extract_start_end_date(page_text),
+      this.extract_featured_artists(page_text),
+      this.extract_exhibition_name(page_text),
+      this.extract_image_urls(images),
+      this.extract_details(page_text),
+      this.extract_is_ticketed(page_text),
+    ]);
+
+    return {
+      private_view,
+      start_and_end_date,
+      featured_artists: featured_artists?.featured_artists ?? [],
+      exhibition_name: exhibition_name?.exhibition_name ?? null,
+      image_urls: image_urls?.urls ?? [],
+      details: details?.details ?? null,
+      is_ticketed: is_ticketed?.is_ticketed ?? null,
+    };
+  };
+
   async handler(url: string, gallery_id: string) {
     console.log("number of this.pages open:", this.pages.size);
     const pages = await this.browser?.pages();
@@ -641,14 +670,6 @@ export class EventScraper {
       return;
     }
 
-    // const response = await fetch(`https://r.jina.ai/${url}`);
-    // const markdown = await response.text();
-
-    // console.log("markdown events", markdown);
-    // const hrefs = await this.getHrefs(url);
-    // const events = await this.find_events(markdown, hrefs);
-    //
-    //
     const page_key = url;
 
     try {
@@ -679,6 +700,8 @@ export class EventScraper {
 
       console.log("seen exhibitions", seen_exhibitions.length);
 
+      // const selected_events = [events[2]];
+
       await Promise.allSettled(
         events.map(async (event) => {
           // filter events instead of this
@@ -705,61 +728,56 @@ export class EventScraper {
             return;
           }
 
+          console.log(`${event.name} markdown:`, markdown);
+
           const images = await this.get_image_urls(event.event_page_url);
 
-          console.log("images", images);
-
-          // console.log("markdown lol", markdown);
-
-          // const response = await fetch(
-          //   `https://r.jina.ai/${event.event_page_url}`
-          // );
-          // const markdown = await response.text();
+          // console.log("images", images);
 
           // TODO: first get the legit end date of the event and if in past then don't bother with the other checks
 
-          const [
-            private_view,
-            start_and_end_date,
-            featured_artists,
-            exhibition_name,
-            image_urls,
-            details,
-            is_ticketed,
-          ] = await Promise.all([
-            this.extract_private_view(markdown),
-            this.extract_start_end_date(markdown),
-            this.extract_featured_artists(markdown),
-            this.extract_exhibition_name(markdown),
-            this.extract_image_urls(images),
-            this.extract_details(markdown),
-            this.extract_is_ticketed(markdown),
-          ]);
+          const details = await this.extract_event(markdown, images);
+
+          // const [
+          //   private_view,
+          //   start_and_end_date,
+          //   featured_artists,
+          //   exhibition_name,
+          //   image_urls,
+          //   details,
+          //   is_ticketed,
+          // ] = await Promise.all([
+          //   this.extract_private_view(markdown),
+          //   this.extract_start_end_date(markdown),
+          //   this.extract_featured_artists(markdown),
+          //   this.extract_exhibition_name(markdown),
+          //   this.extract_image_urls(images),
+          //   this.extract_details(markdown),
+          //   this.extract_is_ticketed(markdown),
+          // ]);
 
           // TODO: These two blocking statements might not need to exist if the prompt for getting the events is better. e.g. saying the page is unstructured??
 
           const payload = {
-            exhibition_name: exhibition_name?.exhibition_name ?? null,
+            exhibition_name: details.exhibition_name ?? null,
             info: details?.details ?? null,
-            featured_artists: JSON.stringify(
-              featured_artists?.featured_artists ?? []
-            ),
+            featured_artists: JSON.stringify(details.featured_artists ?? []),
             exhibition_page_url: event.event_page_url,
-            image_urls: JSON.stringify(image_urls?.urls ?? []),
-            is_ticketed: !!is_ticketed?.is_ticketed,
+            image_urls: JSON.stringify(details.image_urls ?? []),
+            is_ticketed: !!details.is_ticketed,
             start_date: this.convertDate(
-              start_and_end_date?.start_date ?? event.start_date ?? null
+              details.start_and_end_date?.start_date ?? event.start_date ?? null
             ),
             end_date: this.convertDate(
-              start_and_end_date?.end_date ?? event.end_date ?? null
+              details.start_and_end_date?.end_date ?? event.end_date ?? null
             ),
             private_view_start_date: this.convertDate(
-              private_view?.private_view_start_date ??
+              details.private_view?.private_view_start_date ??
                 event.private_view_start_date ??
                 null
             ),
             private_view_end_date: this.convertDate(
-              private_view?.private_view_end_date ??
+              details.private_view?.private_view_end_date ??
                 event.private_view_end_date ??
                 null
             ),
@@ -780,7 +798,7 @@ export class EventScraper {
             return;
           }
 
-          if (!exhibition_name?.exhibition_name) {
+          if (!details.exhibition_name) {
             await this.closePage(
               event.event_page_url,
               `Blocking: no exhibition name found ${event.name}`
