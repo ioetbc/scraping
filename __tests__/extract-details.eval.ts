@@ -1,10 +1,10 @@
-import {Factuality, Levenshtein} from "autoevals";
-import {evalite} from "evalite";
+import { Factuality, Levenshtein } from "autoevals";
+import { evalite } from "evalite";
 
-import {EventScraper} from "../services/event-scraper.js";
+import { EventScraper } from "../services/event-scraper.js";
 
 import dotenv from "dotenv";
-import {extract_private_view_prompt} from "../prompts/extract-event-details-prompt.js";
+import { extract_private_view_prompt } from "../prompts/extract-event-details-prompt.js";
 
 dotenv.config();
 
@@ -46,30 +46,30 @@ const a_leap_of_sympathy = `
   For press enquiries, please email: [sonja@richardsaltoun.com](mailto:%20sonja@richardsaltoun.com)
 `;
 
-const {user_prompt} = extract_private_view_prompt({
-  markdown: a_leap_of_sympathy,
+const { user_prompt } = extract_private_view_prompt({
+	markdown: a_leap_of_sympathy,
 });
 
 evalite("Extract private view times", {
-  data: async () => [
-    {
-      input: user_prompt,
-      expected: JSON.stringify({
-        private_view_start_date: "2025-05-15T18:30:00.000Z",
-        private_view_end_date: "2025-05-15T20:30:00.000Z",
-      }),
-    },
-  ],
-  task: async (input) => {
-    const scraper = new EventScraper();
-    const result = await scraper.extract_details(a_leap_of_sympathy);
+	data: async () => [
+		{
+			input: user_prompt,
+			expected: JSON.stringify({
+				private_view_start_date: "2025-05-15T18:30:00.000Z",
+				private_view_end_date: "2025-05-15T20:30:00.000Z",
+			}),
+		},
+	],
+	task: async (input) => {
+		const scraper = new EventScraper();
+		const result = await scraper.extract_details(a_leap_of_sympathy);
 
-    return JSON.stringify({
-      private_view_start_date: result?.details,
-      private_view_end_date: result?.details,
-    });
-  },
-  scorers: [Factuality, Levenshtein],
+		return JSON.stringify({
+			private_view_start_date: result?.details,
+			private_view_end_date: result?.details,
+		});
+	},
+	scorers: [Factuality, Levenshtein],
 });
 
 // evalite("Extract event details", {

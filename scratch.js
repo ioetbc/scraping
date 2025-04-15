@@ -329,9 +329,9 @@ import * as cheerio from "cheerio";
 const $ = cheerio.load(html);
 
 $("a").each((i, el) => {
-  const href = $(el).attr("href");
-  const text = $(el).text().trim();
-  allAnchors.push({href, text});
+	const href = $(el).attr("href");
+	const text = $(el).text().trim();
+	allAnchors.push({ href, text });
 });
 
 // $("iframe").remove();

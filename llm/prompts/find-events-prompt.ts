@@ -1,13 +1,13 @@
 export const find_events_prompt = ({
-  source_of_truth,
-  hrefs,
-  current_date,
+	source_of_truth,
+	hrefs,
+	current_date,
 }: {
-  source_of_truth: string | Uint8Array; // TODO this should just be a string
-  hrefs: string[];
-  current_date: string;
+	source_of_truth: string | Uint8Array; // TODO this should just be a string
+	hrefs: string[];
+	current_date: string;
 }) => ({
-  system_prompt: `
+	system_prompt: `
     You are a world class event scraper, tasked with collecting accurate information on current and forthcoming events.
 
     You are provided with three input:
@@ -48,7 +48,7 @@ export const find_events_prompt = ({
       Convert extracted dates to ISO 8601 format.
     </important>
   `,
-  user_prompt: `
+	user_prompt: `
     "Plain text file": ${source_of_truth},
     "List of hrefs": ${hrefs},
     "Current date": ${current_date}

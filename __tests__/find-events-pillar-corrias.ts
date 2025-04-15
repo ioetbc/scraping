@@ -1,11 +1,11 @@
-import {Factuality, Levenshtein} from "autoevals";
-import {evalite} from "evalite";
+import { Factuality, Levenshtein } from "autoevals";
+import { evalite } from "evalite";
 // import { traceAISDKModel } from "evalite/ai-sdk";
-import {format} from "date-fns";
+import { format } from "date-fns";
 
-import {find_events_prompt} from "../prompts/find-events-prompt.js";
+import { find_events_prompt } from "../prompts/find-events-prompt.js";
 
-import {EventScraper} from "../services/event-scraper.js";
+import { EventScraper } from "../services/event-scraper.js";
 
 import dotenv from "dotenv";
 
@@ -68,33 +68,33 @@ With their wobbly edifices of joyful colour, the paintings of **Hasani Sahlehe**
 ![Image 13: Hasani Sahlehe My Paint2025 Acrylic gel and airbrush on canvas 152.4 x 121.9 cm 60 x 48 in](https://www.pilarcorrias.com/images/shim.png)
 `;
 
-const {system_prompt, user_prompt} = find_events_prompt({
-  source_of_truth: source_of_truth_mock,
-  hrefs: [],
-  current_date: format(new Date(), "yyyy-MM-dd"),
+const { system_prompt, user_prompt } = find_events_prompt({
+	source_of_truth: source_of_truth_mock,
+	hrefs: [],
+	current_date: format(new Date(), "yyyy-MM-dd"),
 });
 
 evalite("Find events", {
-  data: async () => [
-    {
-      input: user_prompt,
-      expected: JSON.stringify({
-        events: [
-          {
-            name: "PROSCENIUM",
-            url: "https://xxijrahi.net/category/PROSCENIUM/",
-            start_date: "2025-04-01",
-            end_date: "2025-04-30",
-          },
-        ],
-      }),
-    },
-  ],
-  task: async (input) => {
-    const scraper = new EventScraper();
-    const result = await scraper.find_events(source_of_truth_mock, []);
-    console.log("result lol", JSON.stringify(result));
-    return JSON.stringify(result);
-  },
-  scorers: [Factuality, Levenshtein],
+	data: async () => [
+		{
+			input: user_prompt,
+			expected: JSON.stringify({
+				events: [
+					{
+						name: "PROSCENIUM",
+						url: "https://xxijrahi.net/category/PROSCENIUM/",
+						start_date: "2025-04-01",
+						end_date: "2025-04-30",
+					},
+				],
+			}),
+		},
+	],
+	task: async (input) => {
+		const scraper = new EventScraper();
+		const result = await scraper.find_events(source_of_truth_mock, []);
+		console.log("result lol", JSON.stringify(result));
+		return JSON.stringify(result);
+	},
+	scorers: [Factuality, Levenshtein],
 });

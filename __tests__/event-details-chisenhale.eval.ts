@@ -1,14 +1,14 @@
-import {Factuality, Levenshtein} from "autoevals";
-import {evalite} from "evalite";
+import { Factuality, Levenshtein } from "autoevals";
+import { evalite } from "evalite";
 // import { traceAISDKModel } from "evalite/ai-sdk";
-import {format} from "date-fns";
+import { format } from "date-fns";
 
-import {find_events_prompt} from "../prompts/find-events-prompt.js";
+import { find_events_prompt } from "../prompts/find-events-prompt.js";
 
-import {EventScraper} from "../services/event-scraper.js";
+import { EventScraper } from "../services/event-scraper.js";
 
 import dotenv from "dotenv";
-import {exhibition_name_prompt} from "../prompts/extract-event-details-prompt.js";
+import { exhibition_name_prompt } from "../prompts/extract-event-details-prompt.js";
 
 dotenv.config();
 
@@ -144,24 +144,24 @@ Facebook
 © Chisenhale Gallery 2025
 `;
 
-const {user_prompt} = exhibition_name_prompt({
-  markdown: source_of_truth_mock,
+const { user_prompt } = exhibition_name_prompt({
+	markdown: source_of_truth_mock,
 });
 
 evalite("event details Chisenhale", {
-  data: async () => [
-    {
-      input: user_prompt,
-      expected: JSON.stringify({
-        events: [{exhibition_name: "Empty Alcove / Rotting Figure"}],
-      }),
-    },
-  ],
-  task: async () => {
-    const scraper = new EventScraper();
-    const result = await scraper.extract_exhibition_name(source_of_truth_mock);
-    console.log("result chisenhale", JSON.stringify(result));
-    return JSON.stringify(result);
-  },
-  scorers: [Factuality, Levenshtein],
+	data: async () => [
+		{
+			input: user_prompt,
+			expected: JSON.stringify({
+				events: [{ exhibition_name: "Empty Alcove / Rotting Figure" }],
+			}),
+		},
+	],
+	task: async () => {
+		const scraper = new EventScraper();
+		const result = await scraper.extract_exhibition_name(source_of_truth_mock);
+		console.log("result chisenhale", JSON.stringify(result));
+		return JSON.stringify(result);
+	},
+	scorers: [Factuality, Levenshtein],
 });

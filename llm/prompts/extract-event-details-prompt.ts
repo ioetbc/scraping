@@ -1,14 +1,16 @@
 import {
-  details_schema,
-  exhibition_name_schema,
-  featured_artist_schema,
-  is_ticketed_schema,
-  private_view_schema,
-  start_date_end_date_schema,
+	details_schema,
+	exhibition_name_schema,
+	featured_artist_schema,
+	is_ticketed_schema,
+	private_view_schema,
+	start_date_end_date_schema,
 } from "../../zod/index.js";
 
-export const start_and_end_date_prompt = ({markdown}: {markdown: string}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event start dates and end dates.
+export const start_and_end_date_prompt = ({
+	markdown,
+}: { markdown: string }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event start dates and end dates.
 
   <inputs>
     1. Source of truth: A markdown file that provides the accurate event details.
@@ -45,14 +47,14 @@ export const start_and_end_date_prompt = ({markdown}: {markdown: string}) => ({
   </important>
 
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${start_date_end_date_schema.shape}
   `,
 });
 
-export const exhibition_name_prompt = ({markdown}: {markdown: string}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
+export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   You are provided with two inputs:
 
@@ -67,14 +69,16 @@ export const exhibition_name_prompt = ({markdown}: {markdown: string}) => ({
   </important>
 
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${exhibition_name_schema.shape}
   `,
 });
 
-export const featured_artists_prompt = ({markdown}: {markdown: string}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting an accurate list of all artists featured in the event.
+export const featured_artists_prompt = ({
+	markdown,
+}: { markdown: string }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting an accurate list of all artists featured in the event.
 
   <inputs>
     1. Source of truth: A markdown file that provides the accurate event details.
@@ -92,14 +96,14 @@ export const featured_artists_prompt = ({markdown}: {markdown: string}) => ({
     6. Only include artists that are the main focus of the event.
   </important>
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${featured_artist_schema.shape}
   `,
 });
 
-export const details_prompt = ({markdown}: {markdown: string}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event press releases.
+export const details_prompt = ({ markdown }: { markdown: string }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event press releases.
 
   <inputs>
     1. Source of truth: A plain text file that provides the accurate event details.
@@ -115,14 +119,14 @@ export const details_prompt = ({markdown}: {markdown: string}) => ({
     Do not inclide line breaks \n in your response.
   </important>
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${details_schema.shape}
   `,
 });
 
-export const image_url_prompt = ({image_urls}: {image_urls: string[]}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
+export const image_url_prompt = ({ image_urls }: { image_urls: string[] }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event names.
 
   <inputs>
     1. Image URLs: A list of all the image urls for the event.
@@ -143,17 +147,17 @@ export const image_url_prompt = ({image_urls}: {image_urls: string[]}) => ({
     4. The images should be able to render within an html <img> tag.
   </import>
 `,
-  user_prompt: `
+	user_prompt: `
     "Image URLs": ${JSON.stringify(image_urls)},
   `,
 });
 
 export const extract_private_view_prompt = ({
-  markdown,
+	markdown,
 }: {
-  markdown: string;
+	markdown: string;
 }) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
 
   <inputs>
     1. Source of truth: A markdown file that provides the accurate event details.
@@ -208,14 +212,14 @@ export const extract_private_view_prompt = ({
     </important>
 
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${private_view_schema.shape}
   `,
 });
 
-export const is_ticketed_prompt = ({markdown}: {markdown: string}) => ({
-  system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
+export const is_ticketed_prompt = ({ markdown }: { markdown: string }) => ({
+	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
 
   <inputs>
     1. Source of truth: A markdown file that provides the accurate event details.
@@ -224,7 +228,7 @@ export const is_ticketed_prompt = ({markdown}: {markdown: string}) => ({
 
   The is_ticketed property should only be set to true if the user has to RSVP, book, pay for a ticket or anything similar. The default value for ticketing is false. Only set the property to true if you are 100% sure that a ticket is required. If you are in doubt, set it to false.
 `,
-  user_prompt: `
+	user_prompt: `
     "Source of truth": ${markdown},
     "Schema": ${is_ticketed_schema.shape}
   `,
