@@ -7,10 +7,10 @@ import {
 	is_ticketed_prompt,
 	start_and_end_date_prompt,
 } from "./extract-event-details-prompt.js";
-w
+
 import { find_events_prompt } from "./find-events-prompt.js";
 
-export {
+export default {
 	find_events_prompt,
 	details_prompt,
 	exhibition_name_prompt,

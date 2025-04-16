@@ -1,11 +1,4 @@
-import {
-	details_schema,
-	exhibition_name_schema,
-	featured_artist_schema,
-	is_ticketed_schema,
-	private_view_schema,
-	start_date_end_date_schema,
-} from "../../zod/index.js";
+import schemas from "../../zod/index.js";
 
 export const start_and_end_date_prompt = ({
 	markdown,
@@ -49,7 +42,7 @@ export const start_and_end_date_prompt = ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${start_date_end_date_schema.shape}
+    "Schema": ${schemas.start_date_end_date_schema.shape}
   `,
 });
 
@@ -71,7 +64,7 @@ export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${exhibition_name_schema.shape}
+    "Schema": ${schemas.exhibition_name_schema.shape}
   `,
 });
 
@@ -98,7 +91,7 @@ export const featured_artists_prompt = ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${featured_artist_schema.shape}
+    "Schema": ${schemas.featured_artist_schema.shape}
   `,
 });
 
@@ -121,7 +114,7 @@ export const details_prompt = ({ markdown }: { markdown: string }) => ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${details_schema.shape}
+    "Schema": ${schemas.details_schema.shape}
   `,
 });
 
@@ -214,7 +207,7 @@ export const extract_private_view_prompt = ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${private_view_schema.shape}
+    "Schema": ${schemas.private_view_schema.shape}
   `,
 });
 
@@ -230,6 +223,6 @@ export const is_ticketed_prompt = ({ markdown }: { markdown: string }) => ({
 `,
 	user_prompt: `
     "Source of truth": ${markdown},
-    "Schema": ${is_ticketed_schema.shape}
+    "Schema": ${schemas.is_ticketed_schema.shape}
   `,
 });

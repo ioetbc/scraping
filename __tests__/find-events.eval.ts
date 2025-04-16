@@ -1,11 +1,10 @@
 import { Factuality, Levenshtein } from "autoevals";
-import { evalite } from "evalite";
 // import { traceAISDKModel } from "evalite/ai-sdk";
 import { format } from "date-fns";
+import { evalite } from "evalite";
 
-import { find_events_prompt } from "../prompts/find-events-prompt.js";
-
-import { EventScraper } from "../services/event-scraper.js";
+import prompts from "../llm/prompts/index";
+import { EventScraper } from "../services/event-scraper";
 
 import dotenv from "dotenv";
 
@@ -192,7 +191,7 @@ const hrefs_mock = [
 	"javascript:;",
 ];
 
-const { system_prompt, user_prompt } = find_events_prompt({
+const { user_prompt } = prompts.find_events_prompt({
 	source_of_truth: source_of_truth_mock,
 	hrefs: hrefs_mock,
 	current_date: format(new Date(), "yyyy-MM-dd"),

@@ -1,13 +1,10 @@
 import { Factuality, Levenshtein } from "autoevals";
-import { evalite } from "evalite";
-// import { traceAISDKModel } from "evalite/ai-sdk";
 import { format } from "date-fns";
-
-import { find_events_prompt } from "../prompts/find-events-prompt.js";
-
-import { EventScraper } from "../services/event-scraper.js";
-
 import dotenv from "dotenv";
+import { evalite } from "evalite";
+
+import prompts from "../llm/prompts";
+import { EventScraper } from "../services/event-scraper";
 
 dotenv.config();
 
@@ -469,7 +466,7 @@ Past Exhibitions
 ![Xxijra Hii](https://xxijrahii.net/wp-content/uploads/2023/12/2020-holly-birtles-up-to-your-neck-in-mud-xxijra-hii-08.webp)
 `;
 
-const { system_prompt, user_prompt } = find_events_prompt({
+const { user_prompt } = prompts.find_events_prompt({
 	source_of_truth: source_of_truth_mock,
 	hrefs: [],
 	current_date: format(new Date(), "yyyy-MM-dd"),

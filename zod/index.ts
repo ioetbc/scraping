@@ -14,10 +14,10 @@ import {
 import { event_image_schema } from "../zod/event-image-schema.js";
 import { event_map_schema } from "../zod/event-map-schema.js";
 
-type Event = z.infer<typeof event_map_schema.shape.events>[number];
-type MegaSchema = z.infer<typeof mega_schema>;
+export type Event = z.infer<typeof event_map_schema.shape.events>[number];
+export type MegaSchema = z.infer<typeof mega_schema>;
 
-export {
+export default {
 	details_schema,
 	exhibition_name_schema,
 	featured_artist_schema,
@@ -28,6 +28,4 @@ export {
 	start_date_end_date_schema,
 	event_map_schema,
 	event_image_schema,
-	type Event,
-	type MegaSchema,
 };

@@ -1,9 +1,9 @@
-import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { EventScraper } from "./services/event-scraper.js";
-import { ReviewScraper } from "./services/reviews-scraper.js";
-import { PrivateViewScraper } from "./services/private-view-scraper.js";
-import { DatabaseService } from "./services/database.js";
+import { Hono } from "hono";
+import { DatabaseService } from "./services/database";
+import { EventScraper } from "./services/event-scraper";
+import { PrivateViewScraper } from "./services/private-view-scraper";
+import { ReviewScraper } from "./services/reviews-scraper";
 
 const app = new Hono().basePath("/api");
 
