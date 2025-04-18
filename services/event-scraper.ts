@@ -1,21 +1,32 @@
+import { writeFileSync } from "node:fs";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import * as cheerio from "cheerio";
 import { format, isAfter } from "date-fns";
 import { type Browser, type Page, launch } from "puppeteer";
 
+import { snake_case } from "../helpers/snake-case";
 import prompts from "../llm/prompts/index";
-import schemas, { type Event } from "../zod/index";
+import schemas, { type Event } from "../schema/index";
+import { blocked_image_domains, blocked_image_extensions } from "./consts";
 import { DatabaseService } from "./database";
+
+type PageMap = {
+	page: Page;
+	cheerio: { dom: cheerio.CheerioAPI; page_text: string };
+};
+
 export class EventScraper {
-	pages: Map<string, Page>;
+	pages: Map<string, PageMap>;
 	browser: Browser | undefined;
 	current_date: string;
+	dom: cheerio.CheerioAPI;
 
 	constructor() {
-		this.pages = new Map();
+		this.pages = new Map<string, PageMap>();
 		this.browser = undefined;
 		this.current_date = format(new Date(), "yyyy-MM-dd");
+		this.dom = undefined;
 	}
 
 	launch_browser = async () => {
@@ -24,6 +35,7 @@ export class EventScraper {
 			headless: true,
 			args: ["--no-sandbox", "--disable-gpu"],
 		});
+		this.pages = new Map();
 	};
 
 	async visit_website(url: string): Promise<void> {
@@ -33,12 +45,35 @@ export class EventScraper {
 		}
 
 		const newPage = await this.browser.newPage();
-		this.pages.set(url, newPage);
 
 		try {
 			await newPage.goto(url, {
 				waitUntil: "networkidle2",
 				timeout: 60000,
+			});
+
+			const html = await newPage?.evaluate(() => document.body.innerHTML);
+
+			const $ = cheerio.load(html);
+
+			$("iframe").remove();
+			$("script").remove();
+			$("style").remove();
+
+			const text = $("body").text();
+
+			const cleaned_text = text
+				.split("\n")
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+				.join("\n");
+
+			this.pages.set(url, {
+				page: newPage,
+				cheerio: {
+					dom: $,
+					page_text: cleaned_text,
+				},
 			});
 		} catch (error) {
 			console.log("error visiting", error);
@@ -47,47 +82,11 @@ export class EventScraper {
 		}
 	}
 
-	async get_inner_text(key: string) {
-		const page = this.pages.get(key);
-		if (!page) {
-			await this.close_page(
-				key,
-				`no page found whilst getting inner text ${key}`,
-			);
-			return undefined;
-		}
-
-		const html = await page?.evaluate(() => document.body.innerHTML);
-
-		const $ = cheerio.load(html);
-
-		$("iframe").remove();
-		$("script").remove();
-		$("style").remove();
-
-		const text = $("body").text();
-
-		const cleaned_text = text
-			// Split by newline
-			.split("\n")
-			// Trim each line
-			.map((line) => line.trim())
-			// Filter out blank lines
-			.filter((line) => line.length > 0)
-			// Join everything with a single newline
-			.join("\n");
-
-		return cleaned_text;
-	}
-
 	async get_hrefs(key: string) {
-		const page = this.pages.get(key);
-		if (!page) {
-			console.log("no page found for key", key);
-			return [];
-		}
+		const current_page = this.get_current_page(key);
 
-		const hrefs = await page.evaluate(() => {
+		// must use puppeteer here to get domain part of url as well as href. Cheerio only gets the href
+		const hrefs = await current_page?.page.evaluate(() => {
 			const links = document.querySelectorAll("a");
 
 			if (links.length === 0) {
@@ -126,29 +125,24 @@ export class EventScraper {
 	}
 
 	async get_image_urls(key: string) {
-		const page = this.pages.get(key);
-		if (!page) {
-			console.log("no page found for key", key);
-			return [];
-		}
+		const current_page = this.get_current_page(key);
 
-		const image_urls = await page.evaluate(() => {
-			const images = document.querySelectorAll("img");
-			console.log("images", images);
+		const dom = current_page?.cheerio.dom;
 
-			const unique = new Set(Array.from(images).map((image) => image.src));
+		const image_urls = dom("img")
+			.map((_, img) => dom(img).attr("data-srcset") ?? dom(img).attr("src"))
+			.get();
 
-			const blocked_extensions = [".svg", ".gif", ".ico"];
+		const filtered_image_urls = image_urls.filter(
+			(url) =>
+				!blocked_image_extensions.some((extension) =>
+					url.endsWith(extension),
+				) && !blocked_image_domains.some((domain) => url.startsWith(domain)),
+		);
 
-			const urls = Array.from(unique).filter(
-				(href) =>
-					!blocked_extensions.some((extension) => href.endsWith(extension)),
-			);
+		const unique_image_urls = new Set(filtered_image_urls);
 
-			return urls;
-		});
-
-		return image_urls ?? [];
+		return Array.from(unique_image_urls);
 	}
 
 	async find_events(
@@ -168,7 +162,7 @@ export class EventScraper {
 
 		try {
 			const result = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.event_map_schema,
@@ -193,7 +187,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.private_view_schema,
@@ -212,7 +206,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.start_date_end_date_schema,
@@ -232,7 +226,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.exhibition_name_schema,
@@ -252,7 +246,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.featured_artist_schema,
@@ -271,17 +265,11 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.details_schema,
 			});
-
-			// const data = await llm({
-			//   system_prompt,
-			//   user_prompt,
-			//   schema: details_schema,
-			// });
 
 			return data.object;
 		} catch (error) {
@@ -296,7 +284,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.image_url_schema,
@@ -315,7 +303,7 @@ export class EventScraper {
 
 		try {
 			const data = await generateObject({
-				model: openai("gpt-4o-mini"),
+				model: openai("gpt-4.1-mini"),
 				system: system_prompt,
 				prompt: user_prompt,
 				schema: schemas.is_ticketed_schema,
@@ -377,20 +365,27 @@ export class EventScraper {
 		await db.insert_seen_exhibition(exhibition_name, gallery_id);
 	}
 
-	async close_page(key: string, reason?: string) {
-		const page = this.pages.get(key);
-		if (page) {
-			try {
-				console.log("closing page for", page);
-				await page.close();
-			} catch (error) {
-				console.log("error closing page:", error);
-			}
-			this.pages.delete(key);
-		} else {
-			console.log("no page found, unable to close page. for key:", key);
+	get_current_page(key: string) {
+		const current_page = this.pages.get(key);
+		if (!current_page?.page) {
+			console.log("no page found, unable to get current page. for key:", key);
 			return;
 		}
+
+		return current_page;
+	}
+
+	async close_page(key: string, reason?: string) {
+		const current_page = this.get_current_page(key);
+
+		try {
+			console.log("closing page for", current_page);
+			await current_page?.page.close();
+		} catch (error) {
+			console.log("error closing page:", error);
+		}
+
+		this.pages.delete(key);
 
 		if (reason) {
 			console.log("closed page reason:", reason);
@@ -443,7 +438,33 @@ export class EventScraper {
 		};
 	}
 
-	async handler(url: string, gallery_id: string) {
+	async write_mocks({
+		event_name,
+		markdown,
+		folder,
+		page_key,
+	}: {
+		event_name: string;
+		markdown: string;
+		folder: "extract-details" | "find-events";
+		page_key: string;
+	}) {
+		if (!process.env.WRITE_MOCKS) return;
+
+		console.log("writing source of truth", event_name);
+		const snake_case_event_name = snake_case(event_name);
+
+		const path = `./__tests__/generated/mocks/${folder}/${snake_case_event_name}.ts`;
+		const hrefs = await this.get_hrefs(page_key);
+		const content =
+			`export const ${snake_case_event_name}_source_of_truth = ` +
+			`\`${markdown}\`` +
+			`${folder === "find-events" ? `export const ${snake_case_event_name}_hrefs = ${JSON.stringify(hrefs)};` : ""}`;
+
+		writeFileSync(path, content);
+	}
+
+	async handler(url: string, gallery_id: string, gallery_name: string) {
 		await this.launch_browser();
 
 		console.time("scraping time");
@@ -459,9 +480,11 @@ export class EventScraper {
 		try {
 			await this.visit_website(url);
 
-			const page_text = await this.get_inner_text(page_key);
+			const all_events_page_text = this.pages.get(page_key)?.cheerio.page_text;
+			console.log("all_events_page_text", all_events_page_text);
 			const hrefs = await this.get_hrefs(page_key);
-			const events = await this.find_events(page_text, hrefs);
+			console.log("hrefs", hrefs);
+			const events = await this.find_events(all_events_page_text, hrefs);
 
 			console.log("events.length", events.length);
 			console.log("events", events);
@@ -471,6 +494,13 @@ export class EventScraper {
 				await this.close_page(page_key, "No events found");
 				return;
 			}
+
+			this.write_mocks({
+				event_name: gallery_name,
+				markdown: all_events_page_text,
+				folder: "find-events",
+				page_key,
+			});
 
 			const db = new DatabaseService();
 			const seen_exhibitions = await db.get_seen_exhibitions(); // this.db
@@ -484,6 +514,7 @@ export class EventScraper {
 					);
 
 					if (should_skip) {
+						console.log(`skipping event ${event.name}`, reason);
 						return;
 					}
 
@@ -491,7 +522,8 @@ export class EventScraper {
 
 					await this.visit_website(event.event_page_url);
 
-					const markdown = await this.get_inner_text(event.event_page_url);
+					const markdown = this.pages.get(event.event_page_url)?.cheerio
+						.page_text;
 
 					if (!markdown) {
 						await this.close_page(
@@ -501,15 +533,12 @@ export class EventScraper {
 						return;
 					}
 
-					// console.log("writing source of truth", event.name);
-					// const snake_case_event_name = event.name
-					//   .replace(/\s+/g, "_")
-					//   .toLowerCase();
-					// const filePath = `./__tests__/generated/mocks/${snake_case_event_name}.ts`;
-					// const fileContent = `export const ${snake_case_event_name}_source_of_truth = \`${markdown}\`;`;
-					// fs.writeFileSync(filePath, fileContent);
-
-					// console.log(`${event.name} markdown:`, markdown);
+					this.write_mocks({
+						event_name: event.name,
+						markdown,
+						folder: "extract-details",
+						page_key: event.event_page_url,
+					});
 
 					const images = await this.get_image_urls(event.event_page_url);
 

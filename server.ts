@@ -27,7 +27,11 @@ app.get("/event-scraper", async (context) => {
 	for (const gallery of galleries) {
 		if (gallery.name === "Cardi Gallery") continue;
 
-		await scraper.handler(gallery.exhibition_page_url, gallery.id);
+		await scraper.handler(
+			gallery.exhibition_page_url,
+			gallery.id,
+			gallery.name,
+		);
 
 		done.push(gallery.id);
 		console.log(`done ${done.length} / ${galleries.length}`);

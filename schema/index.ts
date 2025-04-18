@@ -9,10 +9,10 @@ import {
 	mega_schema,
 	private_view_schema,
 	start_date_end_date_schema,
-} from "../zod/event-details-schema.js";
+} from "../schema/event-details-schema.js";
 
-import { event_image_schema } from "../zod/event-image-schema.js";
-import { event_map_schema } from "../zod/event-map-schema.js";
+import { event_image_schema } from "../schema/event-image-schema.js";
+import { event_map_schema } from "../schema/event-map-schema.js";
 
 export type Event = z.infer<typeof event_map_schema.shape.events>[number];
 export type MegaSchema = z.infer<typeof mega_schema>;

@@ -1,4 +1,4 @@
-import schemas from "../../zod/index.js";
+import schemas from "../../schema/index.js";
 
 export const start_and_end_date_prompt = ({
 	markdown,
