@@ -5,4 +5,8 @@ export const snake_case = (value: string) =>
 		.replace("–", "")
 		.replace("|", "")
 		.replace(/\s+/g, "_")
+		.replace('"', "")
+		.replace("`", "")
+		.replace("'", "")
+		.replace("’", "")
 		.toLowerCase();

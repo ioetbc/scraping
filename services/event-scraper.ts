@@ -379,7 +379,6 @@ export class EventScraper {
 		const current_page = this.get_current_page(key);
 
 		try {
-			console.log("closing page for", current_page);
 			await current_page?.page.close();
 		} catch (error) {
 			console.log("error closing page:", error);

@@ -3,16 +3,18 @@ import { evalite } from "evalite";
 import { EventScraper } from "../services/event-scraper.js";
 
 import {
-	kiefer_source_of_truth,
+	a_leap_of_sympathy_source_of_truth,
 	early_witness_source_of_truth,
+	i_dont_know_whats_come_over_me_source_of_truth,
+	kiefer_source_of_truth,
 	metamorphosis_source_of_truth,
 	nora_source_of_truth,
-	a_leap_of_sympathy_source_of_truth,
-	i_dont_know_whats_come_over_me_source_of_truth,
 } from "./mocks.js";
 
-// const anselm_kiefer_url =
-//   "https://www.whitecube.com/gallery-exhibitions/anselm-kiefer-masons-yard-2025";
+import { søren_arildsen_in_the_seams_source_of_truth } from "./generated/mocks/extract-details/søren_arildsen_in_the_seams";
+
+const anselm_kiefer_url =
+	"https://www.whitecube.com/gallery-exhibitions/anselm-kiefer-masons-yard-2025";
 
 evalite("White Cube - Anselm Kiefer", {
 	data: async () => [
@@ -114,11 +116,11 @@ evalite("White Cube - Metamorphosis", {
 				exhibition_name: "Metamorphosis – A Retrospective",
 				image_urls: ["https://example.image"],
 				details: `
-          The first London retrospective of work by Richard Hunt (1935–2023), one of the foremost American sculptors of the 20th and 21st centuries, opens at White Cube Bermondsey in April 2025. 
+          The first London retrospective of work by Richard Hunt (1935–2023), one of the foremost American sculptors of the 20th and 21st centuries, opens at White Cube Bermondsey in April 2025.
 
-          Over a seven decade-long career, Hunt staged more than 170 solo shows and completed over 160 large-scale public sculpture commissions worldwide. In 1971, at the age of 35, he achieved a historic milestone as the first African American sculptor to receive a retrospective at New York’s MoMA. 
+          Over a seven decade-long career, Hunt staged more than 170 solo shows and completed over 160 large-scale public sculpture commissions worldwide. In 1971, at the age of 35, he achieved a historic milestone as the first African American sculptor to receive a retrospective at New York’s MoMA.
 
-          Working predominantly in metal, Hunt was profoundly inspired by biological science and the natural world. His hybrid sculptures are characterised by dualities, that of the natural and the industrial, the surreal and the abstract, the geometric and the organic. 
+          Working predominantly in metal, Hunt was profoundly inspired by biological science and the natural world. His hybrid sculptures are characterised by dualities, that of the natural and the industrial, the surreal and the abstract, the geometric and the organic.
 
           Throughout his career, the late artist paid tribute to some of America’s greatest heroes in his work, including Martin Luther King Jr., Mary McLeod Bethune, Jesse Owens and Hobart Taylor Jr. In 2022, he was commissioned by Barack Obama to create a work for the Obama Presidential Centre, located in the artist’s hometown of Chicago.
         `,
@@ -157,7 +159,7 @@ evalite("ICA - Nora Turato: pool7", {
         In arresting live performances, Nora Turato channels the defining currents of shared culture today. Her work culls from the language of the zeitgeist and rehearses its cadences and variances with a resolute devotion to picking out the subtexts, failures, and pleasures in communication. Commanding an audience alone on stage, in often hour-long monologues that have been committed to memory, her performances are a study in tone, pitch, delivery and gesture.
 
         Over two dates, Turato presents an all-new performance which forms part of her solo exhibition at ICA. This newest work is stripped down and raw; Turato enacts pool7 on the level of her body and voice.
-        
+
         With this work, Turato confronts a collective disembodiment, a cultural obsession with surface image that disregards the body and emotion. Reflexive and guttural responses – such as cries, screams or sobs – are incorporated alongside Turato’s original writing, tapping into reactions we suppress with age and conditionally reserve for exceptional pain, danger, grief or ecstasy. In pool7 she introduces an improvised way of shaping the performance, deviating from its script-based predecessors.
         `,
 				is_ticketed: true,
@@ -201,7 +203,7 @@ Richard Saltoun Gallery is pleased to present A Leap of Sympathy, the inaugural 
 
 Perach’s sculptures thread the line between the beautiful and ornamental as well as the grotesque and eerie, challenging the boundaries between fine art and craft. Using tufting, a traditional and labor-intensive textile technique, the artist reimagines archetypes as hybrid forms that question prevailing cultural myths surrounding gender. Central to Perach’s practice is an exploration of the “monstrous” body—a concept that feminist theorist Donna Haraway uses to imagine new, counter-hegemonic forms of existence, adaptation and imagination in a fractured world. Thus, vilified female archetypes—such as witches and monsters, figures often marginalized for transgressing social norms—are frequently Perach’s protagonists, through whom she reflects on contemporary societal perceptions of femininity and otherness.
 
-Such reflections are encapsulated in the work Olimpia, the focal point of the exhibition. The installation features two large-scale feminine sculptures in rococo inspired dresses: one is a wearable piece, activated by a performer, while the other is controlled by a clockwork structure operated from within the wearable sculpture. This marks the very first time the artist is using robotics in her work. In Olimpia, she looks at the historical casting of the feminine form as frivolous, overly emotional  and unruly, threatening religious and scientific categorization. As a result, it has been subjugated and coerced into alignment with the dominant narratives of each era. Perach draws connections between these Western systems of control and their impact on the female body, reflecting on what our contemporary attitudes reveal about broader societal anxieties and fantasies. 
+Such reflections are encapsulated in the work Olimpia, the focal point of the exhibition. The installation features two large-scale feminine sculptures in rococo inspired dresses: one is a wearable piece, activated by a performer, while the other is controlled by a clockwork structure operated from within the wearable sculpture. This marks the very first time the artist is using robotics in her work. In Olimpia, she looks at the historical casting of the feminine form as frivolous, overly emotional  and unruly, threatening religious and scientific categorization. As a result, it has been subjugated and coerced into alignment with the dominant narratives of each era. Perach draws connections between these Western systems of control and their impact on the female body, reflecting on what our contemporary attitudes reveal about broader societal anxieties and fantasies.
 
 Inspired by E.T.A. Hoffmann’s Gothic fiction The Tales of Hoffmann, Olimpia takes its name from the automaton Olimpia, who becomes the object of a young man’s obsessive desire, as he believes her to be a real woman. Her mechanical nature is ultimately exposed during a violent struggle between her creators, which leads to her destruction. Perach focuses on the moment when Olimpia is first introduced to society by singing an area at a ball. She interprets Olimpia and Clara—two central figures in Hoffmann’s story—as representations of the self’s divided nature: Clara embodies societal norms of logic, while Olimpia represents the repressed, chaotic aspects subjected to patriarchal control. These tensions, and the relationship between the two figures and the viewer will be explored in two performances; during on the opening night of the exhibition (Thursday, 15 May | 6pm) and during London Gallery Weekend (Friday, 6 June 2025 | 5PM), incorporating live music, vocal elements and choreographed movement.
 
@@ -269,6 +271,41 @@ With thick gestural surfaces that often employ glitter, confetti and soil, the w
 			["https://example.image"],
 		);
 		console.log("worplace result:", JSON.stringify(result));
+		return JSON.stringify(result);
+	},
+	scorers: [Factuality, Levenshtein],
+});
+
+evalite("The artist room - Søren Arildsen: In the Seams", {
+	data: async () => [
+		{
+			input: "",
+			expected: JSON.stringify({
+				private_view: {
+					private_view_start_date: null,
+					private_view_end_date: null,
+				},
+				start_and_end_date: {
+					start_date: "2025-03-27",
+					end_date: "2025-04-25",
+				},
+				featured_artists: ["Søren Arildsen"],
+				exhibition_name: "In the Seams",
+				image_urls: ["https://example.image"],
+				details:
+					"The Artist Room presents In the Seams, a solo exhibition by Søren Arildsen (b. 1996) and his first in the UK. The show features a new series of oil paintings on canvas set in artist-made porcelain frames, as well as ceramic paintings mounted in treated wood. Arildsen’s work explores how memories take shape, blending reality with recollection and daydreams. While rooted in figuration, his use of materials and process creates a shifting quality, as if the images are drifting in and out of focus, leading the viewer to somewhere between the real and the imagined. The exhibition runs from 27th March to 25th April.",
+				is_ticketed: false,
+			}),
+		},
+	],
+	task: async () => {
+		const scraper = new EventScraper();
+		const result = await scraper.extract_event(
+			søren_arildsen_in_the_seams_source_of_truth,
+			["https://example.image"],
+		);
+
+		console.log("result soren:", JSON.stringify(result));
 		return JSON.stringify(result);
 	},
 	scorers: [Factuality, Levenshtein],

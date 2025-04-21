@@ -17,14 +17,15 @@ app.get("/event-scraper", async (context) => {
 
 	const white_cube_gallery_id = 185;
 	const workplace_gallery_id = 125;
+	const the_artist_room_gallery_id = 29;
 
 	const single = galleries.filter(
-		(gallery) => gallery.id === white_cube_gallery_id,
+		(gallery) => gallery.id === the_artist_room_gallery_id,
 	);
 
 	const done = [];
 
-	for (const gallery of galleries) {
+	for (const gallery of single) {
 		if (gallery.name === "Cardi Gallery") continue;
 
 		await scraper.handler(
@@ -34,7 +35,7 @@ app.get("/event-scraper", async (context) => {
 		);
 
 		done.push(gallery.id);
-		console.log(`done ${done.length} / ${galleries.length}`);
+		console.log(`done ${done.length} / ${single.length}`);
 	}
 
 	// return context.text("Done");
