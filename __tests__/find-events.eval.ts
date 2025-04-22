@@ -12,6 +12,11 @@ import {
 	white_cube_bermondsey_source_of_truth,
 } from "./generated/mocks/find-events/white_cube_bermondsey";
 
+import {
+	annka_kultys_hrefs,
+	annka_kultys_source_of_truth,
+} from "./generated/mocks/find-events/annka_kultys";
+
 evalite("White Cube", {
 	data: async () => [
 		{
@@ -94,6 +99,53 @@ evalite("The Artist Room", {
 		);
 
 		console.log("the artist room hmm", JSON.stringify(result, null, 2));
+
+		return JSON.stringify(result);
+	},
+	scorers: [Factuality, Levenshtein],
+});
+
+evalite("Anna Kultys", {
+	data: async () => [
+		{
+			input: "",
+			expected: JSON.stringify([
+				{
+					name: "BANZ & BOWINKEL",
+					event_page_url:
+						"https://www.annkakultys.com/exhibitions/banz-bowinkel-compositions/",
+					start_date: "2025-03-28",
+					end_date: "2025-05-10",
+					private_view_start_date: null,
+					private_view_end_date: null,
+				},
+				{
+					name: "LOUISA CLEMENT",
+					event_page_url: null,
+					start_date: "2025-06-06",
+					end_date: "2025-07-26",
+					private_view_start_date: "2025-06-08T11:00:00.000Z",
+					private_view_end_date: "2025-06-08T17:00:00.000Z",
+				},
+				// {
+				// 	name: "CACOTOPIA 09 | VRILLUMINATED: MOVING IMAGE PERSPECTIVES",
+				// 	event_page_url: null,
+				// 	start_date: "2024-11-17",
+				// 	end_date: "2025-11-16",
+				// 	private_view_start_date: null,
+				// 	private_view_end_date: null,
+				// },
+			]),
+		},
+	],
+	task: async () => {
+		const scraper = new EventScraper();
+		const result = await scraper.find_events(
+			annka_kultys_source_of_truth,
+			annka_kultys_hrefs,
+		);
+
+		console.log("annka kultys hmm", JSON.stringify(result, null, 2));
 
 		return JSON.stringify(result);
 	},

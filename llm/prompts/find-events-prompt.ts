@@ -13,11 +13,11 @@ export const find_events_prompt = ({
     You are provided with three input:
 
     1. List of hrefs: A list of urls corresponding to current, forthcoming and past events.
-    2. Plain text file: A plain text file that provides many different events.
+    2. Markdown file: A markdown file that is the source of truth for the events.
     3. Current date: The current date in ISO 8601 format.
 
     Your task is as follows:
-    Using the list of hrefs, extract current and forthcoming events from the provided plain text file.
+    Using the list of hrefs, extract current and forthcoming events from the provided markdown file.
     Return a list of current and forthcoming events with their corresponding hrefs.
     Convert extracted dates to ISO 8601 format.
     Only include events that you are 100% sure are current or forthcoming.
@@ -43,9 +43,10 @@ export const find_events_prompt = ({
     </example_1>
 
     <important>
-      If an events end date is in the past do not include it in your response.
-      Only include events that you are 100% sure are current or forthcoming.
-      Convert extracted dates to ISO 8601 format.
+      1. If an events end date is in the past do not include it in your response.
+      2. Only include events that you are 100% sure are current or forthcoming.
+      3. Convert extracted dates to ISO 8601 format.
+      4. If you are unable to provide an accurate event_page_url, set it to null.
     </important>
   `,
 	user_prompt: `

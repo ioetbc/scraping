@@ -11,15 +11,13 @@ import {
 	nora_source_of_truth,
 } from "./mocks.js";
 
+import { banz_and_bowinkel_source_of_truth } from "./generated/mocks/extract-details/banz_and_bowinkel";
 import { søren_arildsen_in_the_seams_source_of_truth } from "./generated/mocks/extract-details/søren_arildsen_in_the_seams";
-
-const anselm_kiefer_url =
-	"https://www.whitecube.com/gallery-exhibitions/anselm-kiefer-masons-yard-2025";
 
 evalite("White Cube - Anselm Kiefer", {
 	data: async () => [
 		{
-			input: "",
+			input: "White Cube - Anselm Kiefer",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: null,
@@ -52,7 +50,7 @@ evalite("White Cube - Anselm Kiefer", {
 evalite("White Cube - Early Lead Works", {
 	data: async () => [
 		{
-			input: "",
+			input: "White Cube - Early Lead Works",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: "2025-04-22T18:00:00.000Z",
@@ -102,7 +100,7 @@ evalite("White Cube - Early Lead Works", {
 evalite("White Cube - Metamorphosis", {
 	data: async () => [
 		{
-			input: "",
+			input: "White Cube - Metamorphosis",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: "2025-04-24T18:30:00.000Z",
@@ -142,7 +140,7 @@ evalite("White Cube - Metamorphosis", {
 evalite("ICA - Nora Turato: pool7", {
 	data: async () => [
 		{
-			input: "",
+			input: "ICA - Nora Turato: pool7",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: null,
@@ -179,7 +177,7 @@ evalite("ICA - Nora Turato: pool7", {
 evalite("Richard Saltoun - A Leap of Sympathy", {
 	data: async () => [
 		{
-			input: "",
+			input: "Richard Saltoun - A Leap of Sympathy",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: "2025-05-15T18:30:00.000Z",
@@ -232,10 +230,10 @@ As articulated by Lauren Elkin in Art Monsters, the “art monster” is a figur
 });
 
 // added way more details here than what the llm current returns
-evalite("Workplace - A Leap of Sympathy", {
+evalite("Workplace - I Don't Know What's Come Over Me", {
 	data: async () => [
 		{
-			input: "",
+			input: "Workplace - I Don't Know What's Come Over Me",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: null,
@@ -279,7 +277,7 @@ With thick gestural surfaces that often employ glitter, confetti and soil, the w
 evalite("The artist room - Søren Arildsen: In the Seams", {
 	data: async () => [
 		{
-			input: "",
+			input: "The artist room - Søren Arildsen: In the Seams",
 			expected: JSON.stringify({
 				private_view: {
 					private_view_start_date: null,
@@ -306,6 +304,38 @@ evalite("The artist room - Søren Arildsen: In the Seams", {
 		);
 
 		console.log("result soren:", JSON.stringify(result));
+		return JSON.stringify(result);
+	},
+	scorers: [Factuality, Levenshtein],
+});
+
+evalite("Anna Kultys - Banz & Bowinkel: Compositions", {
+	data: async () => [
+		{
+			input: "Anna Kultys - Banz & Bowinkel: Compositions",
+			expected: JSON.stringify({
+				private_view: {
+					private_view_start_date: null,
+					private_view_end_date: null,
+				},
+				start_and_end_date: { start_date: null, end_date: null },
+				featured_artists: ["Friedemann Banz", "Giulia Bowinkel"],
+				exhibition_name: "BANZ & BOWINKEL : COMPOSITIONS",
+				image_urls: ["https://example.image"],
+				details:
+					"ANNKA KULTYS GALLERY is pleased to present an exhibition of a new body of digital paintings “Compositions” and an interactive carpet by German collective Banz & Bowinkel. This will be the collective’s debut solo presentation at ANNKA KULTYS GALLERY and its first solo exhibition in London. The series ‘Compositions’ by Banz & Bowinkel presents the three-dimensional yet abstract world of computer-generated environments. Expanding on their previous series ‘Primitives’ in which Banz & Bowinkel reinterpreted the formal vocabulary of common 3D programmes into an alphabet of digital readymades, they now combine these virtual archetypes into meticulously arranged compositions, dropped into infinite Cartesian space. Cubes, pyramids, cylinders, cones, and tori are the building blocks of these virtual worlds. In “Simulacra and Simulation,” Jean Baudrillard describes how the boundary between reality and its representation is increasingly blurred, and he distinguishes between different phases of simulation: from ‘reflection of reality’, to ‘distortion’ and ‘concealment’ until the final stage of a perfect ‘simulacrum’, in which what was initially meant to represent reality now replaces it entirely. The symbols and signs are increasingly replacing or recreating reality. Applied to the series ‘Compositions’, these virtual spaces no longer depict reality but have become a reality in their own right. And as such, they are not bound to the rules of our physical existence anymore but merely obey the rules of code. These shapes are not abstractions of our reality but the forecast of new worlds and truths in a whole new meaning. The dystopian vision of a computer-controlled society is at the core of Banz & Bowinkel’s work Bots, a number of algorithmically controlled humanoid avatars that are emerging from physical jacquard-woven carpets via Augmented Reality (AR). The rug placed on the floor reflects the synthesis and abstraction of human behavioural patterns as a formalised social study, letting the avatars act out simulated performances in real time while being confined to the limited perimeters of the carpets. They cannot change the rules of their reality. Enslaved by our devices and computed environments, the work reminds us of the confines of our own digitalised world: systemically charting our activities and nudging our behaviour, the (invisible) bots that surround us daily have us question the nature of our decision-making. Our autonomy becomes a mere spectre of the autonomous systems we created, shifting the distribution of power and politics under our watch. The carpets’ pattern refers to the Jacquard Loom invented by Joseph-Marie Jacquard, a French weaver and merchant, in 1804. Not only did it transform patterned cloth production but it also represented a revolution in human-machine interaction in its use of binary code punch cards with a punched hole or no punched hole – to instruct a machine (the loom) to carry out an automated process (weaving). The Jacquard machines were an important conceptual precursor to the development of computer programming and data entry, used by the computer pioneer Charles Babbage to store programs in his Analytical Engine. Friedemann Banz (1980, Germany) and Giulia Bowinkel (1983, Germany) are graduates of the Kunstakademie in Düsseldorf, Germany. The duo lives and works in Düsseldorf, Germany. In a number of works, Banz & Bowinkel explore the relationship between virtual and real spaces and how their separation collapses with the advancement of technology. By creating their works with the computer, they reflect on the new possibilities and challenges that the growing dependency on these devices pose. Computers have a binary reality that differs from the way we see the world. But increasingly, the computer monitor serves as the window to the world. Banz & Bowinkel thus examine how this growing entanglement of man and machine changes our understanding of reality. Their works been presented at institutions such as Kunstmuseum, Bonn (2023); Kunsthalle Zürich (2022); Centre Pompidou, Paris (2022) among many others.",
+				is_ticketed: false,
+			}),
+		},
+	],
+	task: async () => {
+		const scraper = new EventScraper();
+		const result = await scraper.extract_event(
+			banz_and_bowinkel_source_of_truth,
+			["https://example.image"],
+		);
+
+		console.log("result banz and bowinkel:", JSON.stringify(result));
 		return JSON.stringify(result);
 	},
 	scorers: [Factuality, Levenshtein],

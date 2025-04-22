@@ -9,4 +9,5 @@ export const snake_case = (value: string) =>
 		.replace("`", "")
 		.replace("'", "")
 		.replace("’", "")
+		.replace("&", "and")
 		.toLowerCase();

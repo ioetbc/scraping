@@ -6,14 +6,17 @@ export const start_and_end_date_prompt = ({
 	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event start dates and end dates.
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
+    1. Markdown file: A markdown file that provides the accurate event details.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
-  Convert extracted dates to ISO 8601 format.
+  <task>
+    If you are able to extract a start date and an end date, convert them to ISO 8601 format.
+    If you are unable to extract a start date or an end date, set the date to null.
+  </task>
 
   <example_1>
-    If the Source of Truth states:
+    If the Markdown file states:
     "15 May—24 June 2025"
 
     You should respond with:
@@ -22,7 +25,7 @@ export const start_and_end_date_prompt = ({
   </example_1>
 
   <example_2>
-    If the Source of Truth states:
+    If the Markdown file states:
     "27th March – 25th April"
 
     You should respond with:
@@ -30,27 +33,33 @@ export const start_and_end_date_prompt = ({
     end_date:   "2025-04-25"
   </example_2>
 
-  <example_2>
-    If the Source of Truth states:
+  <example_3>
+    If the Markdown file states:
     "14.03 - 10.05.2025"
 
     You should respond with:
     start_date: "2025-03-14"
     end_date:   "2025-05-10"
-  </example_2>
-  <important>
-    1. If you are unable to extract a start date, set it to null.
-    2. If you are unable to extract an end date, set it to null.
-    3. If you are only able to extract a start date and the end date is not present in the "Source of truth", set the end date to the start date.
-    4. Convert all dates to ISO 8601 format. For example, September 27, 2025 is represented as 2025-09-27.
-    5. If you are unable to determine the exact year, use the current year.
-    6. Never fabricate dates! If you are unable to determine the exact dates, set the date to null.
-    7. All dates in these instructions are for demonstration purposes. Do not use them in your response. Use the "Source of truth" to extract the correct dates for the given event.
-  </important>
+  </example_3>
 
+  <example_4>
+    If the Markdown file states:
+    "No dates are provided"
+
+    You should respond with:
+    start_date: null
+    end_date:   null
+  </example_4>
+
+  <important>
+    You must only use the "Markdown file" and not fabricate or make up any dates.
+    You must not make up dates.
+    Convert all dates to ISO 8601 format.
+    All dates in these instructions are for demonstration purposes. Do not use them in your response.
+  </important>
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.start_date_end_date_schema.shape}
   `,
 });
@@ -61,7 +70,7 @@ export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
   You are provided with two inputs:
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
+    1. Markdown file: A markdown file that is the source of truth for the events.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
@@ -72,7 +81,7 @@ export const exhibition_name_prompt = ({ markdown }: { markdown: string }) => ({
 
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.exhibition_name_schema.shape}
   `,
 });
@@ -83,11 +92,11 @@ export const featured_artists_prompt = ({
 	system_prompt: `You are a diligent lead researcher, tasked with collecting an accurate list of all artists featured in the event.
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
+    1. Markdown file: A markdown file that is the source of truth for the events.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
-  Featured artists may not explicitly be set with an appropriate prefix, you may need to infer them from the exhibition details, exhibition name or any other relevant information from the "Source of Truth". If you are inferring the featured artists, it is paramount that you are 100% sure that the information you are providing is accurate and reliable.
+  Featured artists may not explicitly be set with an appropriate prefix, you may need to infer them from the exhibition details, exhibition name or any other relevant information from the Markdown file. If you are inferring the featured artists, it is paramount that you are 100% sure that the information you are providing is accurate and reliable.
 
   <important>
     1. The exhibition name should never be included in the featured artists list.
@@ -99,7 +108,7 @@ export const featured_artists_prompt = ({
   </important>
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.featured_artist_schema.shape}
   `,
 });
@@ -108,21 +117,21 @@ export const details_prompt = ({ markdown }: { markdown: string }) => ({
 	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate event press releases.
 
   <inputs>
-    1. Source of truth: A plain text file that provides the accurate event details.
+    1. Markdown file: A markdown file that is the source of truth for the events.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
   Do not cherry pick sentences from paragraphs, provide the full press release but do not include useless information.
 
   <important>
-    You must only use the "Source of truth" and not fabricate or make up any texts.
+    You must only use the "Markdown file" and not fabricate or make up any texts.
     The press release should be a full description of the event.
     Do not include information relating to membership pricing, opening times, contact details, or any other irrelevant information.
     Do not inclide line breaks \n in your response.
   </important>
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.details_schema.shape}
   `,
 });
@@ -162,13 +171,13 @@ export const extract_private_view_prompt = ({
 	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
+    1. Markdown file: A markdown file that is the source of truth for the events.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
 
 
-    Identify a Private Viewing: Check if the source text indicates a private viewing.
+    Identify a Private Viewing: Check if the markdown file indicates a private viewing.
 
     A private viewing can be labeled with terms such as:
 
@@ -184,7 +193,7 @@ export const extract_private_view_prompt = ({
     It is parammount that you extract the exact time for the private view. Double check that the time is accurate and that it is in the correct format.
 
     <example_1>
-      If the Source of Truth says:
+      If the Markdown file says:
 
       "Opening reception:
       10 April 18:00 - 20:00"
@@ -195,7 +204,7 @@ export const extract_private_view_prompt = ({
     </example_1>
 
     <example_2>
-      If the Source of Truth says:
+      If the Markdown file says:
 
       "Opening reception: 6:30–8:30pm"
 
@@ -208,14 +217,14 @@ export const extract_private_view_prompt = ({
       1. If a private view is identified, return the private_view_start_date and private_view_end_date in ISO 8601 format with time.
       2. If you find no private view, do not fabricate any dates. Return null.
       3. Use ISO 8601 for all returned dates and times.
-      4. Always use the exact time of the event as stated in the "Source of Truth". For example if the event starts at 6:15pm, record 2025-04-10T18:15:00.000Z and not 2025-04-10T18:00:00.000Z
-      4. No Fabrication: Only use date/time details found in the "Source of Truth".
+      4. Always use the exact time of the event as stated in the "Markdown file". For example if the event starts at 6:15pm, record 2025-04-10T18:15:00.000Z and not 2025-04-10T18:00:00.000Z
+      4. No Fabrication: Only use date/time details found in the "Markdown file".
       5. Ignore Example Values: Any dates/times shown in these instructions are for demonstration only. Do not reference them directly in your answer.
     </important>
 
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.private_view_schema.shape}
   `,
 });
@@ -224,14 +233,14 @@ export const is_ticketed_prompt = ({ markdown }: { markdown: string }) => ({
 	system_prompt: `You are a diligent lead researcher, tasked with collecting accurate private view timings.
 
   <inputs>
-    1. Source of truth: A markdown file that provides the accurate event details.
+    1. Markdown file: A markdown file that is the source of truth for the events.
     2. Schema: A Zod schema that defines the properties to be verified.
   </inputs>
 
   The is_ticketed property should only be set to true if the user has to RSVP, book, pay for a ticket or anything similar. The default value for ticketing is false. Only set the property to true if you are 100% sure that a ticket is required. If you are in doubt, set it to false.
 `,
 	user_prompt: `
-    "Source of truth": ${markdown},
+    "Markdown file": ${markdown},
     "Schema": ${schemas.is_ticketed_schema.shape}
   `,
 });

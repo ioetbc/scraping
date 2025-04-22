@@ -1,11 +1,9 @@
-import { writeFileSync } from "node:fs";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import * as cheerio from "cheerio";
 import { format, isAfter } from "date-fns";
 import { type Browser, type Page, launch } from "puppeteer";
-
-import { snake_case } from "../helpers/snake-case";
+import TurndownService from "turndown";
 import prompts from "../llm/prompts/index";
 import schemas, { type Event } from "../schema/index";
 import { blocked_image_domains, blocked_image_extensions } from "./consts";
@@ -60,19 +58,14 @@ export class EventScraper {
 			$("script").remove();
 			$("style").remove();
 
-			const text = $("body").text();
-
-			const cleaned_text = text
-				.split("\n")
-				.map((line) => line.trim())
-				.filter((line) => line.length > 0)
-				.join("\n");
+			const turndownService = new TurndownService();
+			const markdown = turndownService.turndown($.html());
 
 			this.pages.set(url, {
 				page: newPage,
 				cheerio: {
 					dom: $,
-					page_text: cleaned_text,
+					page_text: markdown,
 				},
 			});
 		} catch (error) {
@@ -448,19 +441,20 @@ export class EventScraper {
 		folder: "extract-details" | "find-events";
 		page_key: string;
 	}) {
-		if (!process.env.WRITE_MOCKS) return;
+		return;
+		// if (!process.env.WRITE_MOCKS) return;
 
-		console.log("writing source of truth", event_name);
-		const snake_case_event_name = snake_case(event_name);
+		// console.log("writing source of truth", event_name);
+		// const snake_case_event_name = snake_case(event_name);
 
-		const path = `./__tests__/generated/mocks/${folder}/${snake_case_event_name}.ts`;
-		const hrefs = await this.get_hrefs(page_key);
-		const content =
-			`export const ${snake_case_event_name}_source_of_truth = ` +
-			`\`${markdown}\`` +
-			`${folder === "find-events" ? `export const ${snake_case_event_name}_hrefs = ${JSON.stringify(hrefs)};` : ""}`;
+		// const path = `./__tests__/generated/mocks/${folder}/${snake_case_event_name}.ts`;
+		// const hrefs = await this.get_hrefs(page_key);
+		// const content =
+		// 	`export const ${snake_case_event_name}_source_of_truth = ` +
+		// 	`\`${markdown}\`;` +
+		// 	`${folder === "find-events" ? `export const ${snake_case_event_name}_hrefs = ${JSON.stringify(hrefs)};` : ""}`;
 
-		writeFileSync(path, content);
+		// writeFileSync(path, content);
 	}
 
 	async handler(url: string, gallery_id: string, gallery_name: string) {
@@ -480,9 +474,7 @@ export class EventScraper {
 			await this.visit_website(url);
 
 			const all_events_page_text = this.pages.get(page_key)?.cheerio.page_text;
-			console.log("all_events_page_text", all_events_page_text);
 			const hrefs = await this.get_hrefs(page_key);
-			console.log("hrefs", hrefs);
 			const events = await this.find_events(all_events_page_text, hrefs);
 
 			console.log("events.length", events.length);
@@ -517,8 +509,35 @@ export class EventScraper {
 						return;
 					}
 
-					console.log("visiting event details page", event.event_page_url);
+					if (!event.event_page_url) {
+						console.log(
+							"no event page url found for writing what we have",
+							event.name,
+						);
+						const payload = {
+							exhibition_name: event.name,
+							is_ticketed: false,
+							start_date: this.convert_date(event.start_date),
+							end_date: this.convert_date(event.end_date),
+							private_view_start_date: this.convert_date(
+								event.private_view_start_date,
+							),
+							private_view_end_date: this.convert_date(
+								event.private_view_end_date,
+							),
+							gallery_id,
+							info: "",
+							images: JSON.stringify([]),
+							featured_artists: JSON.stringify([]),
+							exhibition_page_url: event.event_page_url,
+							image_urls: JSON.stringify([]),
+						};
+						await db.insert_exhibition(payload);
+						await this.insert_seen_exhibition(event.name, gallery_id);
+						return;
+					}
 
+					console.log("visiting event details page", event.event_page_url);
 					await this.visit_website(event.event_page_url);
 
 					const markdown = this.pages.get(event.event_page_url)?.cheerio

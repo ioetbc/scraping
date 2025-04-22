@@ -9,23 +9,25 @@ const app = new Hono().basePath("/api");
 
 app.get("/event-scraper", async (context) => {
 	const db = new DatabaseService();
+	const scraper = new EventScraper();
+
 	const galleries = await db.get_galleries();
 	console.log("galleries", galleries.length);
-	const scraper = new EventScraper();
 
 	const from = galleries.slice(115);
 
 	const white_cube_gallery_id = 185;
 	const workplace_gallery_id = 125;
 	const the_artist_room_gallery_id = 29;
+	const anna_kultys_gallery_id = 19;
 
 	const single = galleries.filter(
-		(gallery) => gallery.id === the_artist_room_gallery_id,
+		(gallery) => gallery.id === anna_kultys_gallery_id,
 	);
 
 	const done = [];
 
-	for (const gallery of single) {
+	for (const gallery of galleries) {
 		if (gallery.name === "Cardi Gallery") continue;
 
 		await scraper.handler(
@@ -35,7 +37,7 @@ app.get("/event-scraper", async (context) => {
 		);
 
 		done.push(gallery.id);
-		console.log(`done ${done.length} / ${single.length}`);
+		console.log(`done ${done.length} / ${galleries.length}`);
 	}
 
 	// return context.text("Done");
