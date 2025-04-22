@@ -43,6 +43,50 @@ app.get("/event-scraper", async (context) => {
 	// return context.text("Done");
 });
 
+app.get("/write-mocks", async (context) => {
+	const db = new DatabaseService();
+	const scraper = new EventScraper();
+
+	const galleries = await db.get_galleries();
+	const anna_kultys_gallery_id = 19;
+
+	const single = galleries.filter(
+		(gallery) => gallery.id === anna_kultys_gallery_id,
+	)[0];
+
+	await scraper.launch_browser();
+
+	if (!scraper.browser) {
+		console.log("no browser found");
+		return;
+	}
+
+	const url = single.exhibition_page_url;
+
+	await scraper.visit_website(url);
+
+	const all_events_page_text = scraper.pages.get(url)?.cheerio.page_text;
+	const hrefs = await scraper.get_hrefs(url);
+	const events = await scraper.find_events(all_events_page_text, hrefs);
+
+	console.log("events", events);
+
+	if (events.length === 0) {
+		console.log("no events found for:", url);
+		await scraper.close_page(url, "No events found");
+		return;
+	}
+
+	scraper.write_mocks({
+		event_name: single.name,
+		markdown: all_events_page_text,
+		folder: "find-events",
+		page_key: url,
+	});
+
+	return context.text("Done");
+});
+
 app.get("/reviews-scraper", async (context) => {
 	const scraper = new ReviewScraper();
 	await scraper.handler();

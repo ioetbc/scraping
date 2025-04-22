@@ -1,9 +1,11 @@
+import { writeFileSync } from "node:fs";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import * as cheerio from "cheerio";
 import { format, isAfter } from "date-fns";
 import { type Browser, type Page, launch } from "puppeteer";
 import TurndownService from "turndown";
+import { snake_case } from "../helpers/snake-case";
 import prompts from "../llm/prompts/index";
 import schemas, { type Event } from "../schema/index";
 import { blocked_image_domains, blocked_image_extensions } from "./consts";
@@ -441,20 +443,17 @@ export class EventScraper {
 		folder: "extract-details" | "find-events";
 		page_key: string;
 	}) {
-		return;
-		// if (!process.env.WRITE_MOCKS) return;
+		console.log("writing source of truth", event_name);
+		const snake_case_event_name = snake_case(event_name);
 
-		// console.log("writing source of truth", event_name);
-		// const snake_case_event_name = snake_case(event_name);
+		const path = `./__tests__/generated/mocks/${folder}/${snake_case_event_name}.ts`;
+		const hrefs = await this.get_hrefs(page_key);
+		const content =
+			`export const ${snake_case_event_name}_source_of_truth = ` +
+			`\`${markdown}\`;` +
+			`${folder === "find-events" ? `export const ${snake_case_event_name}_hrefs = ${JSON.stringify(hrefs)};` : ""}`;
 
-		// const path = `./__tests__/generated/mocks/${folder}/${snake_case_event_name}.ts`;
-		// const hrefs = await this.get_hrefs(page_key);
-		// const content =
-		// 	`export const ${snake_case_event_name}_source_of_truth = ` +
-		// 	`\`${markdown}\`;` +
-		// 	`${folder === "find-events" ? `export const ${snake_case_event_name}_hrefs = ${JSON.stringify(hrefs)};` : ""}`;
-
-		// writeFileSync(path, content);
+		writeFileSync(path, content);
 	}
 
 	async handler(url: string, gallery_id: string, gallery_name: string) {
@@ -485,13 +484,6 @@ export class EventScraper {
 				await this.close_page(page_key, "No events found");
 				return;
 			}
-
-			this.write_mocks({
-				event_name: gallery_name,
-				markdown: all_events_page_text,
-				folder: "find-events",
-				page_key,
-			});
 
 			const db = new DatabaseService();
 			const seen_exhibitions = await db.get_seen_exhibitions(); // this.db
@@ -551,17 +543,9 @@ export class EventScraper {
 						return;
 					}
 
-					this.write_mocks({
-						event_name: event.name,
-						markdown,
-						folder: "extract-details",
-						page_key: event.event_page_url,
-					});
-
 					const images = await this.get_image_urls(event.event_page_url);
 
 					// TODO: first get the legit end date of the event and if in past then don't bother with the other checks
-
 					const details = await this.extract_event(markdown, images);
 
 					const payload = {
